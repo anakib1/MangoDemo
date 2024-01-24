@@ -81,7 +81,6 @@ class WhisperModelForSpeakerDiarization(WhisperModel):
         self.linear_layer = nn.Linear(config.d_model, self.config.max_num_speakers)
         self.post_init()
 
-
     def forward(self, input_features, labels=None, attention_mask=None, head_mask=None, output_attentions=None,
                 output_hidden_states=None, return_dict=None):
         """

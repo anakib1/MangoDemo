@@ -10,8 +10,8 @@ safe = None
 
 transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='anakib1/whisper-small-uk',
                                                               processor_checkpoint='openai/whisper-small'))
-diarizer = WhisperDiarizer(WhisperBasedDiarizationConfig(whisper_checkpoint='anakib1/whisper-diarization-0.2',
-                                                         processor_checkpoint='openai/whisper-tiny',
+diarizer = WhisperDiarizer(WhisperBasedDiarizationConfig(whisper_checkpoint='anakib1/whisper-small-diarization-0.3',
+                                                         processor_checkpoint='anakib1/whisper-small-diarization-0.3',
                                                          max_num_speakers=3))
 classifier = WhisperClassifier(WhisperClassifierConfig(whisper_checkpoint='anakib1/whisper-tiny-urban',
                                                        processor_checkpoint='openai/whisper-tiny'))
@@ -47,3 +47,5 @@ gradio_interface = gr.Interface(
              gr.Label(label='noise context', num_top_classes=4)],
     allow_flagging='never'
 )
+
+gradio_interface.launch()
