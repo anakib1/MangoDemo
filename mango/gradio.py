@@ -47,5 +47,3 @@ gradio_interface = gr.Interface(
              gr.Label(label='noise context', num_top_classes=4)],
     allow_flagging='never'
 )
-
-gradio_interface.launch()

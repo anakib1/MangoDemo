@@ -4,7 +4,7 @@ import logging
 import torchaudio
 from typing import Tuple, Dict
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from torch.utils.data import Dataset
 from tqdm.notebook import tqdm
 from transformers import WhisperProcessor
@@ -38,11 +38,40 @@ class FileDataset(Dataset):
         return self.generate_func(self.files[index])
 
 
+noises_map = {'DLIVING': 0,
+              'PCAFETER': 1,
+              'DWASHING': 2,
+              'TBUS': 3,
+              'TCAR': 4,
+              'SCAFE': 5,
+              'DKITCHEN': 6,
+              'PSTATION': 7,
+              'NPARK': 8,
+              'TMETRO': 9,
+              'OHALLWAY': 10,
+              'SPSQUARE': 11,
+              'NFIELD': 12,
+              'OOFFICE': 13,
+              'NRIVER': 14,
+              'OMEETING': 15,
+              'PRESTO': 16,
+              'STRAFFIC': 17}
+
+
 @dataclass
 class SynthConfig:
     dataset_prefix: str = '/kaggle/input/synthnooverlap-2/SynthCommonVoice0.3'
     max_num_speakers: int = 3
-    noises2id: Dict[str, int] = None
+    noises2id: Dict[str, int] = field(default_factory=lambda: noises_map)
+
+
+@dataclass
+class TrainingConfig(SynthConfig):
+    base_checkpoint: str = 'openai/whisper-small'
+    model_checkpoint_name: str = 'whisper-small-diarization-0.3'
+    per_device_train_batch_size: int = 12
+    per_device_eval_batch_size: int = 16
+    num_noise_labels: int = 18
 
 
 class SynthDataset:
