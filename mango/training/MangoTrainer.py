@@ -1,3 +1,5 @@
+import pathlib
+
 import numpy as np
 import torch
 import accelerate
@@ -7,6 +9,8 @@ import logging
 from tqdm.notebook import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from huggingface_hub import HfApi
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +33,11 @@ class EvalOutput(TrainingOutput):
 
 @dataclass
 class TrainerConfig:
+    model_name: str = None
     report_predictions: bool = False
     concatenate_batches: bool = True
     use_tensorboard: bool = True
-    tensorboard_dir: str = None
+    push_to_hub_strategy: str = 'end'
 
 
 class MangoTrainer:
@@ -63,6 +68,7 @@ class MangoTrainer:
         self.optimizer = accelerator.prepare_optimizer(self.optimizer)
         self.train_loader = accelerator.prepare_data_loader(self.train_loader)
         self.eval_loader = accelerator.prepare_data_loader(self.eval_loader)
+        self.api = HfApi()
 
     def train(self, num_epochs=1, compute_metrics=None) -> None:
         """
@@ -76,7 +82,10 @@ class MangoTrainer:
             compute_metrics = lambda output: np.mean(output.loss)
 
         if self.config.use_tensorboard:
-            self.writer = SummaryWriter(log_dir=self.config.tensorboard_dir)
+            self.writer = SummaryWriter(
+                log_dir=str(pathlib.Path(self.config.model_name).joinpath('runs').joinpath(
+                    datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+                )))
         try:
             for epoch in tqdm(range(num_epochs)):
                 train_outputs = self.train_iteration(epoch, self.config.report_predictions)
@@ -87,8 +96,24 @@ class MangoTrainer:
                 metrics = compute_metrics(val_outputs)
                 self.log_results(metrics, val_outputs)
 
+                if self.config.push_to_hub_strategy == 'epoch':
+                    self.push_to_hub()
+
+            if self.config.push_to_hub_strategy == 'end':
+                self.push_to_hub()
         finally:
             self.writer.close()
+
+    def push_to_hub(self):
+        torch.save(self.model.state_dict(), f'{self.config.model_name}/model.pt')
+        repo_id = f'anakib1/{self.config.model_name}'
+        if not self.api.repo_exists(repo_id):
+            self.api.create_repo(repo_id, repo_type='model')
+        self.api.upload_folder(
+            folder_path=f'{self.config.model_name}',
+            repo_id=repo_id,
+            repo_type="model"
+        )
 
     def log_results(self, results: Dict[str, float], outputs: Union[TrainingOutput, EvalOutput]) -> None:
         iteration_class = 'eval' if isinstance(outputs, EvalOutput) else 'train'
