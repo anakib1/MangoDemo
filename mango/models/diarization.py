@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from mango.utils.diarization import batch_pit_loss
+from ..utils.diarization import batch_pit_loss
 from dataclasses import dataclass
 from typing import Dict
 

@@ -80,16 +80,16 @@ class DatasetMixer:
         """
         self.speakers2utterance = {}
         self.speaker2id = {}
-        for i, row in enumerate(self.utterances):
-            self.speakers2utterance.setdefault(row['speaker_id'], []).append(i)
-            self.speaker2id.setdefault(row['speaker_id'], len(self.speaker2id))
+        for i, speaker_id in enumerate(self.utterances['speaker_id']):
+            self.speakers2utterance.setdefault(speaker_id, []).append(i)
+            self.speaker2id.setdefault(speaker_id, len(self.speaker2id))
         self.num_speakers = len(self.speaker2id)
 
         self.noise2id = {}
         self.noise2audio = {}
-        for i, row in enumerate(self.noises):
-            self.noise2audio.setdefault(row['label'], []).append(i)
-            self.noise2id.setdefault(row['label'], len(self.noise2id))
+        for i, noise_label in enumerate(self.noises['label']):
+            self.noise2audio.setdefault(noise_label, []).append(i)
+            self.noise2id.setdefault(noise_label, len(self.noise2id))
         self.num_noises = len(self.noise2id)
 
         self.utterances = self.utterances.cast_column('audio', Audio(sampling_rate=self.config.output_sampling_rate))
