@@ -29,6 +29,7 @@ class WhisperTranscriptor(BaseTranscriptor):
         self.whisper = WhisperForConditionalGeneration.from_pretrained(config.whisper_checkpoint)
         self.whisper.eval()
         self.processor = WhisperProcessor.from_pretrained(config.processor_checkpoint)
+        self.processor.tokenizer.language = self.config.language
 
     def transcribe(self, waveform: np.ndarray, sr: int = 16_000) -> str:
         waveform = torchaudio.transforms.Resample(sr, 16_000)(torch.tensor(waveform, dtype=torch.float))

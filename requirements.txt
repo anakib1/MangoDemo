@@ -6,3 +6,5 @@ transformers~=4.36.2
 matplotlib~=3.8.2
 gradio~=4.15.0
 pyannote.core
+datasets~=2.16.1
+accelerate~=0.25.0

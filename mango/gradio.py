@@ -8,8 +8,9 @@ import gradio as gr
 
 safe = None
 
-transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='anakib1/whisper-small-uk',
-                                                              processor_checkpoint='openai/whisper-small'))
+transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='anakib1/whisper-asr-0.1',
+                                                              processor_checkpoint='anakib1/whisper-asr-0.1',
+                                                              language='uk'))
 diarizer = WhisperDiarizer(WhisperBasedDiarizationConfig(whisper_checkpoint='anakib1/whisper-small-diarization-0.3',
                                                          processor_checkpoint='anakib1/whisper-small-diarization-0.3',
                                                          max_num_speakers=3))
