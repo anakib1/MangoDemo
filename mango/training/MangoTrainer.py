@@ -37,6 +37,7 @@ class TrainerConfig:
     report_predictions: bool = False
     concatenate_batches: bool = True
     use_tensorboard: bool = True
+    logs_frequency_batches: int = 1
     push_to_hub_strategy: str = 'end'
 
 
@@ -52,6 +53,8 @@ class MangoTrainer:
         :param accelerator: accelerator instance for custom config
         :param optimizer: optimizer instance for custom gradient descend
         """
+        self.eval_bar = None
+        self.train_bar = None
         self.writer = None
         self.config = config
         self.model = model
@@ -69,6 +72,8 @@ class MangoTrainer:
         self.train_loader = accelerator.prepare_data_loader(self.train_loader)
         self.eval_loader = accelerator.prepare_data_loader(self.eval_loader)
         self.api = HfApi()
+        self.global_train_step = 0
+        self.global_eval_step = 0
 
     def train(self, num_epochs=1, compute_metrics=None) -> None:
         """
@@ -102,6 +107,8 @@ class MangoTrainer:
                 if self.config.push_to_hub_strategy == 'epoch':
                     self.push_to_hub()
 
+                logger.info(f'Epoch {epoch} passed')
+
             if self.config.push_to_hub_strategy == 'end':
                 self.push_to_hub()
         finally:
@@ -124,8 +131,6 @@ class MangoTrainer:
         if self.config.use_tensorboard:
             for k, v in results.items():
                 self.writer.add_scalar(f'{k}/{iteration_class}', v, outputs.epoch_id)
-        else:
-            raise NotImplemented('Only tensorboard is supported for now')
 
     def group_predictions(self, predictions: Dict[str, List[torch.Tensor]]) -> Union[
         Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
@@ -177,6 +182,10 @@ class MangoTrainer:
                     train_outputs[k].append(v.detach())
             losses.append(float(loss))
             self.train_bar.update(1)
+            self.global_train_step += 1
+
+            if self.global_train_step % self.config.logs_frequency_batches == 0:
+                logger.debug(f'Global train step {self.global_train_step}')
 
         return TrainingOutput(epoch_id=epoch_index, losses=losses,
                               model_outputs=self.group_predictions(train_outputs))
@@ -204,6 +213,11 @@ class MangoTrainer:
                         model_outputs[k] = []
                     model_outputs[k].append(v)
                 losses.append(float(loss))
+
                 self.eval_bar.update(1)
+                self.global_eval_step += 1
+
+                if self.global_eval_step % self.config.logs_frequency_batches == 0:
+                    logger.debug(f'Global eval step {self.global_eval_step}')
 
         return EvalOutput(epoch_id=epoch_index, losses=losses, model_outputs=self.group_predictions(model_outputs))
