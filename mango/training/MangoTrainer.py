@@ -6,7 +6,7 @@ import accelerate
 from dataclasses import dataclass
 from typing import List, Any, Dict, Union
 import logging
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from huggingface_hub import HfApi
@@ -78,8 +78,11 @@ class MangoTrainer:
         :return: None
         """
 
+        self.train_bar = tqdm(desc='train', total=num_epochs * len(self.train_loader))
+        self.eval_bar = tqdm(desc='eval', total=num_epochs * len(self.eval_loader))
+
         if compute_metrics is None:
-            compute_metrics = lambda output: np.mean(output.loss)
+            compute_metrics = lambda output: {'loss': np.mean(output.losses)}
 
         if self.config.use_tensorboard:
             self.writer = SummaryWriter(
@@ -87,7 +90,7 @@ class MangoTrainer:
                     datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
                 )))
         try:
-            for epoch in tqdm(range(num_epochs)):
+            for epoch in range(num_epochs):
                 train_outputs = self.train_iteration(epoch, self.config.report_predictions)
                 metrics = compute_metrics(train_outputs)
                 self.log_results(metrics, train_outputs)
@@ -131,7 +134,7 @@ class MangoTrainer:
         :param predictions: dictionary of model outputs.
         :return: dictionary of grouped model predictions
         """
-        if not self.config.concatenate_batches:
+        if not self.config.concatenate_batches or not self.config.report_predictions:
             return predictions
         ret = {}
         for k, v in predictions.items():
@@ -156,7 +159,7 @@ class MangoTrainer:
         train_outputs = {} if report_predictions else None
         losses = []
 
-        for batch in tqdm(self.train_loader):
+        for batch in self.train_loader:
             batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
 
             self.optimizer.zero_grad()
@@ -175,6 +178,7 @@ class MangoTrainer:
                         train_outputs[k] = []
                     train_outputs[k].append(v.detach())
             losses.append(float(loss))
+            self.train_bar.update(1)
 
         return TrainingOutput(epoch_id=epoch_index, losses=losses,
                               model_outputs=self.group_predictions(train_outputs))
@@ -191,7 +195,7 @@ class MangoTrainer:
         losses = []
 
         with torch.no_grad():
-            for batch in tqdm(self.eval_loader):
+            for batch in self.eval_loader:
                 batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
 
                 output = self.model(**batch)
@@ -204,5 +208,6 @@ class MangoTrainer:
                         model_outputs[k] = []
                     model_outputs[k].append(v)
                 losses.append(float(loss))
+                self.eval_bar.update(1)
 
         return EvalOutput(epoch_id=epoch_index, losses=losses, model_outputs=self.group_predictions(model_outputs))
