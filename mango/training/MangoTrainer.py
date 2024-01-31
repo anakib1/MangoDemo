@@ -190,18 +190,19 @@ class MangoTrainer:
         model_outputs = {}
         losses = []
 
-        for batch in self.eval_loader:
-            batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
+        with torch.no_grad():
+            for batch in self.eval_loader:
+                batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
 
-            output = self.model(**batch)
-            if 'loss' not in output:
-                raise Exception("Model 'forward' function did not return 'loss' as expected. ")
-            loss = output['loss']
+                output = self.model(**batch)
+                if 'loss' not in output:
+                    raise Exception("Model 'forward' function did not return 'loss' as expected. ")
+                loss = output['loss']
 
-            for k, v in output.items():
-                if k not in model_outputs:
-                    model_outputs[k] = []
-                model_outputs[k].append(v)
-            losses.append(float(loss))
+                for k, v in output.items():
+                    if k not in model_outputs:
+                        model_outputs[k] = []
+                    model_outputs[k].append(v)
+                losses.append(float(loss))
 
         return EvalOutput(epoch_id=epoch_index, losses=losses, model_outputs=self.group_predictions(model_outputs))
