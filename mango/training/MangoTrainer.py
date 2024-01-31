@@ -160,8 +160,6 @@ class MangoTrainer:
         losses = []
 
         for batch in self.train_loader:
-            batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
-
             self.optimizer.zero_grad()
             output = self.model(**batch)
             if 'loss' not in output:
@@ -196,8 +194,6 @@ class MangoTrainer:
 
         with torch.no_grad():
             for batch in self.eval_loader:
-                batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
-
                 output = self.model(**batch)
                 if 'loss' not in output:
                     raise Exception("Model 'forward' function did not return 'loss' as expected. ")
