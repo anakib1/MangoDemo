@@ -6,7 +6,7 @@ import accelerate
 from dataclasses import dataclass
 from typing import List, Any, Dict, Union
 import logging
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from huggingface_hub import HfApi
@@ -156,7 +156,7 @@ class MangoTrainer:
         train_outputs = {} if report_predictions else None
         losses = []
 
-        for batch in self.train_loader:
+        for batch in tqdm(self.train_loader):
             batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
 
             self.optimizer.zero_grad()
@@ -191,7 +191,7 @@ class MangoTrainer:
         losses = []
 
         with torch.no_grad():
-            for batch in self.eval_loader:
+            for batch in tqdm(self.eval_loader):
                 batch = {k: v.to(self.accelerator.device) for k, v in batch.items()}
 
                 output = self.model(**batch)
