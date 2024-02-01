@@ -92,7 +92,7 @@ class MangoTrainer:
             compute_metrics = lambda output: {}
 
         if self.config.use_tensorboard:
-            self.accelerator.init_trackers(f'run-{datetime.now().strftime("%y-%m-%d.%H-%M")}')
+            self.accelerator.init_trackers(f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}')
 
         for epoch in range(num_epochs):
             train_outputs = self.train_iteration(epoch)
