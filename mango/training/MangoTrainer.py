@@ -128,7 +128,7 @@ class MangoTrainer:
             if not self.api.repo_exists(repo_id):
                 self.api.create_repo(repo_id, repo_type='model')
             self.api.upload_folder(
-                folder_path=f'{self.config.model_name}',
+                folder_path=f'{self.project_dir}',
                 repo_id=repo_id,
                 repo_type="model"
             )
