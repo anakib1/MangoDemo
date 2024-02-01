@@ -58,7 +58,7 @@ class MangoTrainer:
         self.model = model
         self.train_loader = train_loader
         self.eval_loader = eval_loader
-        self.project_dir = f'./output/run-{datetime.now().strftime("%y-%m-%d|%H-%M")}'
+        self.project_dir = pathlib.Path('output').joinpath(self.config.model_name)
         if accelerator is None:
             accelerator = accelerate.Accelerator(log_with='tensorboard',
                                                  project_dir=self.project_dir)
@@ -92,7 +92,7 @@ class MangoTrainer:
             compute_metrics = lambda output: {}
 
         if self.config.use_tensorboard:
-            self.accelerator.init_trackers(self.config.model_name)
+            self.accelerator.init_trackers(f'run-{datetime.now().strftime("%y-%m-%d.%H-%M")}')
 
         for epoch in range(num_epochs):
             train_outputs = self.train_iteration(epoch)
@@ -124,16 +124,18 @@ class MangoTrainer:
             pathlib.Path(self.project_dir).mkdir(parents=True, exist_ok=True)
             unwrapped_model = self.accelerator.unwrap_model(self.model)
             torch.save(unwrapped_model.state_dict(), f'{self.project_dir}/model.pt')
-            repo_id = f'anakib1/{self.config.model_name}'
-            if not self.api.repo_exists(repo_id):
-                self.api.create_repo(repo_id, repo_type='model')
-            self.api.upload_folder(
-                folder_path=f'{self.project_dir}',
-                repo_id=repo_id,
-                repo_type="model"
-            )
+
+            if self.config.push_to_hub:
+                repo_id = f'anakib1/{self.config.model_name}'
+                if not self.api.repo_exists(repo_id):
+                    self.api.create_repo(repo_id, repo_type='model')
+                self.api.upload_folder(
+                    folder_path=f'{self.project_dir}',
+                    repo_id=repo_id,
+                    repo_type="model"
+                )
         except Exception as ex:
-            logger.error(f'Pushing model failed. Exception: {ex}')
+            logger.error(f'Saving model failed. Exception: {ex}')
 
     def log_results(self, results: Dict[str, float], outputs: Union[TrainingOutput, EvalOutput]) -> None:
         iteration_class = 'eval' if isinstance(outputs, EvalOutput) else 'train'
