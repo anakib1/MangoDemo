@@ -6,9 +6,8 @@ import accelerate
 from dataclasses import dataclass
 from typing import List, Any, Dict, Union
 import logging
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from huggingface_hub import HfApi
 from datetime import datetime
 
@@ -55,13 +54,13 @@ class MangoTrainer:
         """
         self.eval_bar = None
         self.train_bar = None
-        self.writer = None
         self.config = config
         self.model = model
         self.train_loader = train_loader
         self.eval_loader = eval_loader
         if accelerator is None:
-            accelerator = accelerate.Accelerator()
+            accelerator = accelerate.Accelerator(log_with='tensorboard',
+                                                 project_dir=f'./output/run-{datetime.now().strftime("%y:%m:%d:%H:%M")}')
         self.accelerator = accelerator
         if optimizer is None:
             optimizer = torch.optim.Adam(model.parameters())
@@ -83,54 +82,64 @@ class MangoTrainer:
         :return: None
         """
 
-        self.train_bar = tqdm(desc='train', total=num_epochs * len(self.train_loader))
-        self.eval_bar = tqdm(desc='eval', total=num_epochs * len(self.eval_loader))
+        if self.accelerator.is_main_process:
+            self.train_bar = tqdm(desc='train', total=num_epochs * len(self.train_loader))
+            self.eval_bar = tqdm(desc='eval', total=num_epochs * len(self.eval_loader))
 
         if compute_metrics is None:
-            compute_metrics = lambda output: {'loss': np.mean(output.losses)}
+            compute_metrics = lambda output: {}
 
         if self.config.use_tensorboard:
-            self.writer = SummaryWriter(
-                log_dir=str(pathlib.Path(self.config.model_name).joinpath('runs').joinpath(
-                    datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-                )))
-        try:
-            for epoch in range(num_epochs):
-                train_outputs = self.train_iteration(epoch, self.config.report_predictions)
-                metrics = compute_metrics(train_outputs)
-                self.log_results(metrics, train_outputs)
+            self.accelerator.init_trackers(self.config.model_name)
 
-                val_outputs = self.eval_iteration(epoch)
-                metrics = compute_metrics(val_outputs)
-                self.log_results(metrics, val_outputs)
+        for epoch in range(num_epochs):
+            train_outputs = self.train_iteration(epoch, self.config.report_predictions)
+            self.accelerator.wait_for_everyone()
 
-                if self.config.push_to_hub_strategy == 'epoch':
-                    self.push_to_hub()
+            metrics = compute_metrics(train_outputs)
+            self.log_results(metrics, train_outputs)
 
-                logger.info(f'Epoch {epoch} passed')
+            val_outputs = self.eval_iteration(epoch)
+            self.accelerator.wait_for_everyone()
 
-            if self.config.push_to_hub_strategy == 'end':
+            metrics = compute_metrics(val_outputs)
+            self.log_results(metrics, val_outputs)
+
+            if self.config.push_to_hub_strategy == 'epoch':
                 self.push_to_hub()
-        finally:
-            self.writer.close()
+
+            logger.info(f'Epoch {epoch} passed')
+
+        if self.config.push_to_hub_strategy == 'end':
+            self.push_to_hub()
+
+        self.accelerator.end_training()
 
     def push_to_hub(self):
-        torch.save(self.model.state_dict(), f'{self.config.model_name}/model.pt')
-        repo_id = f'anakib1/{self.config.model_name}'
-        if not self.api.repo_exists(repo_id):
-            self.api.create_repo(repo_id, repo_type='model')
-        self.api.upload_folder(
-            folder_path=f'{self.config.model_name}',
-            repo_id=repo_id,
-            repo_type="model"
-        )
+        if not self.accelerator.is_main_process:
+            return
+        try:
+            torch.save(self.model.state_dict(), f'{self.config.model_name}/model.pt')
+            repo_id = f'anakib1/{self.config.model_name}'
+            if not self.api.repo_exists(repo_id):
+                self.api.create_repo(repo_id, repo_type='model')
+            self.api.upload_folder(
+                folder_path=f'{self.config.model_name}',
+                repo_id=repo_id,
+                repo_type="model"
+            )
+        except Exception as ex:
+            logger.error(f'Pushing model failed. Exception: {ex}')
 
     def log_results(self, results: Dict[str, float], outputs: Union[TrainingOutput, EvalOutput]) -> None:
         iteration_class = 'eval' if isinstance(outputs, EvalOutput) else 'train'
         results.update({'loss': np.mean(outputs.losses)})
-        if self.config.use_tensorboard:
-            for k, v in results.items():
-                self.writer.add_scalar(f'{k}/{iteration_class}', v, outputs.epoch_id)
+        try:
+            if self.config.use_tensorboard:
+                for k, v in results.items():
+                    self.accelerator.log({f'{k}/{iteration_class}': v}, outputs.epoch_id)
+        except Exception as ex:
+            logger.error(f"Logging failed. Exception: {ex}")
 
     def group_predictions(self, predictions: Dict[str, List[torch.Tensor]]) -> Union[
         Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
@@ -181,11 +190,12 @@ class MangoTrainer:
                         train_outputs[k] = []
                     train_outputs[k].append(v.detach())
             losses.append(float(loss))
-            self.train_bar.update(1)
-            self.global_train_step += 1
 
-            if self.global_train_step % self.config.logs_frequency_batches == 0:
-                logger.debug(f'Global train step {self.global_train_step}')
+            if self.accelerator.is_main_process:
+                self.train_bar.update(1)
+                self.global_train_step += 1
+                if self.global_train_step % self.config.logs_frequency_batches == 0:
+                    logger.debug(f'Global train step {self.global_train_step}')
 
         return TrainingOutput(epoch_id=epoch_index, losses=losses,
                               model_outputs=self.group_predictions(train_outputs))
@@ -214,10 +224,10 @@ class MangoTrainer:
                     model_outputs[k].append(v)
                 losses.append(float(loss))
 
-                self.eval_bar.update(1)
-                self.global_eval_step += 1
-
-                if self.global_eval_step % self.config.logs_frequency_batches == 0:
-                    logger.debug(f'Global eval step {self.global_eval_step}')
+                if self.accelerator.is_main_process:
+                    self.eval_bar.update(1)
+                    self.global_eval_step += 1
+                    if self.global_eval_step % self.config.logs_frequency_batches == 0:
+                        logger.debug(f'Global eval step {self.global_eval_step}')
 
         return EvalOutput(epoch_id=epoch_index, losses=losses, model_outputs=self.group_predictions(model_outputs))
