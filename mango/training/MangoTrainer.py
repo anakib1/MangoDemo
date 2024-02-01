@@ -33,11 +33,11 @@ class EvalOutput(TrainingOutput):
 @dataclass
 class TrainerConfig:
     model_name: str = None
-    report_predictions: bool = False
     concatenate_batches: bool = True
     use_tensorboard: bool = True
     logs_frequency_batches: int = 1
-    push_to_hub_strategy: str = 'end'
+    save_strategy: str = 'end'
+    push_to_hub: bool = True
 
 
 class MangoTrainer:
@@ -58,9 +58,10 @@ class MangoTrainer:
         self.model = model
         self.train_loader = train_loader
         self.eval_loader = eval_loader
+        self.project_dir = f'./output/run-{datetime.now().strftime("%y-%m-%d|%H-%M")}'
         if accelerator is None:
             accelerator = accelerate.Accelerator(log_with='tensorboard',
-                                                 project_dir=f'./output/run-{datetime.now().strftime("%y:%m:%d:%H:%M")}')
+                                                 project_dir=self.project_dir)
         self.accelerator = accelerator
         if optimizer is None:
             optimizer = torch.optim.Adam(model.parameters())
@@ -83,6 +84,7 @@ class MangoTrainer:
         """
 
         if self.accelerator.is_main_process:
+            logger.info("Should create progress bars from the main process.")
             self.train_bar = tqdm(desc='train', total=num_epochs * len(self.train_loader))
             self.eval_bar = tqdm(desc='eval', total=num_epochs * len(self.eval_loader))
 
@@ -93,7 +95,7 @@ class MangoTrainer:
             self.accelerator.init_trackers(self.config.model_name)
 
         for epoch in range(num_epochs):
-            train_outputs = self.train_iteration(epoch, self.config.report_predictions)
+            train_outputs = self.train_iteration(epoch)
             self.accelerator.wait_for_everyone()
 
             metrics = compute_metrics(train_outputs)
@@ -105,21 +107,23 @@ class MangoTrainer:
             metrics = compute_metrics(val_outputs)
             self.log_results(metrics, val_outputs)
 
-            if self.config.push_to_hub_strategy == 'epoch':
-                self.push_to_hub()
+            if self.config.save_strategy == 'epoch':
+                self.save_model()
 
             logger.info(f'Epoch {epoch} passed')
 
-        if self.config.push_to_hub_strategy == 'end':
-            self.push_to_hub()
+        if self.config.save_strategy == 'end':
+            self.save_model()
 
         self.accelerator.end_training()
 
-    def push_to_hub(self):
+    def save_model(self):
         if not self.accelerator.is_main_process:
             return
         try:
-            torch.save(self.model.state_dict(), f'{self.config.model_name}/model.pt')
+            pathlib.Path(self.project_dir).mkdir(parents=True, exist_ok=True)
+            unwrapped_model = self.accelerator.unwrap_model(self.model)
+            torch.save(unwrapped_model.state_dict(), f'{self.project_dir}/model.pt')
             repo_id = f'anakib1/{self.config.model_name}'
             if not self.api.repo_exists(repo_id):
                 self.api.create_repo(repo_id, repo_type='model')
@@ -148,7 +152,7 @@ class MangoTrainer:
         :param predictions: dictionary of model outputs.
         :return: dictionary of grouped model predictions
         """
-        if not self.config.concatenate_batches or not self.config.report_predictions:
+        if not self.config.concatenate_batches:
             return predictions
         ret = {}
         for k, v in predictions.items():
@@ -161,16 +165,15 @@ class MangoTrainer:
                 ret[k] = torch.concatenate(v)
         return ret
 
-    def train_iteration(self, epoch_index: int, report_predictions=False) -> TrainingOutput:
+    def train_iteration(self, epoch_index: int) -> TrainingOutput:
         """
         Runs train iteration.
         :param epoch_index: id of the current epoch
-        :param report_predictions: whether to include all model outputs in result
         :return: The result of the iteration
         """
         self.model.train()
 
-        train_outputs = {} if report_predictions else None
+        train_outputs = {}
         losses = []
 
         for batch in self.train_loader:
@@ -184,11 +187,10 @@ class MangoTrainer:
 
             self.optimizer.step()
 
-            if report_predictions:
-                for k, v in output.items():
-                    if k not in train_outputs:
-                        train_outputs[k] = []
-                    train_outputs[k].append(v.detach())
+            for k, v in output.items():
+                if k not in train_outputs:
+                    train_outputs[k] = []
+                train_outputs[k].append(v.detach())
             losses.append(float(loss))
 
             if self.accelerator.is_main_process:
