@@ -8,3 +8,4 @@ gradio~=4.15.0
 pyannote.core
 datasets~=2.16.1
 accelerate~=0.25.0
+evaluate~=0.4.1
