@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
-from mango.diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer, draw_diarization
+from mango.diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer, \
+    EENDConfig, EENDDiarizer
+from mango.utils.diarization import draw_diarization
 
 
 class TestDiarization(unittest.TestCase):
@@ -29,6 +31,15 @@ class TestDiarization(unittest.TestCase):
         output = model.diarize(audio, sr)
 
         self.verifyOutput(output, 3)
+
+    def test_eend(self):
+        model = EENDDiarizer(EENDConfig(hf_api_model_path='anakib1/eend-sa',
+                                        hf_api_model_name='model.pt', hf_api_processor_path='openai/whisper-small',
+                                        max_num_speakers=2))
+        audio, sr = np.random.randn(16_000 * 30), 16_000
+        output = model.diarize(audio, sr)
+
+        self.verifyOutput(output, 2)
 
 
 if __name__ == '__main__':

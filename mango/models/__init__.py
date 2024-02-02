@@ -1,0 +1,1 @@
+from .diarization import MangoEEND, InternalEENDConfig

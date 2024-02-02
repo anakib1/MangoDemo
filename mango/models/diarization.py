@@ -6,12 +6,12 @@ from typing import Dict
 
 
 @dataclass
-class ModelConfig:
+class InternalEENDConfig:
     d_model: int = 256
     n_heads: int = 4
     n_layers: int = 2
     dim_feedforward: int = 1024
-    num_classes: int = 2
+    num_speakers: int = 2
 
 
 class MangoEEND(nn.Module):
@@ -19,7 +19,7 @@ class MangoEEND(nn.Module):
     Model implements kind of EENND-SA.
     """
 
-    def __init__(self, config: ModelConfig):
+    def __init__(self, config: InternalEENDConfig):
         """
         Instantiates a MangoDiarization model with a given config
         :param config: model configuration
@@ -32,7 +32,7 @@ class MangoEEND(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=config.d_model, nhead=config.n_heads,
                                                    dim_feedforward=config.dim_feedforward)
         self.transformer = nn.TransformerEncoder(encoder_layer, config.n_layers, enable_nested_tensor=False)
-        self.classifier = nn.Sequential(nn.LayerNorm(config.d_model), nn.Linear(config.d_model, config.num_classes))
+        self.classifier = nn.Sequential(nn.LayerNorm(config.d_model), nn.Linear(config.d_model, config.num_speakers))
 
     def forward(self, input_features: torch.Tensor, labels: torch.Tensor = None) -> Dict[str, torch.Tensor]:
         """
@@ -48,6 +48,6 @@ class MangoEEND(nn.Module):
 
         loss, alignments = None, None
         if labels is not None:
-            loss, alignments = batch_pit_loss(labels, logits, self.config.num_classes)
+            loss, alignments = batch_pit_loss(labels, logits, self.config.num_speakers)
 
         return {'logits': logits, 'loss': loss, 'alignments': alignments}

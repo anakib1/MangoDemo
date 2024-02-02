@@ -1,8 +1,8 @@
 import traceback
 from mango.classification import DummyClassifier, BaseClassifierConfig, WhisperClassifierConfig, \
     WhisperClassifier
-from mango.diarization import DummyDiarizer, draw_diarization, DiarizationConfig, WhisperBasedDiarizationConfig, \
-    WhisperDiarizer
+from mango.utils.diarization import draw_diarization
+from mango.diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer
 from mango.transcription import DummyTranscriptor, WhisperTranscriptionConfig, WhisperTranscriptor
 import gradio as gr
 
