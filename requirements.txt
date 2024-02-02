@@ -9,3 +9,4 @@ pyannote.core
 datasets~=2.16.1
 accelerate~=0.25.0
 evaluate~=0.4.1
+jiwer~=3.0.3

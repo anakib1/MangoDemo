@@ -40,7 +40,7 @@ class Wav2All(nn.Module):
         wav2vec2output = self.wav2vec2(input_values, labels = labels, output_hidden_states=True)
         hidden_states = wav2vec2output.hidden_states
 
-        total_loss = torch.tensor(0.0)
+        total_loss = torch.tensor(0.0, device = hidden_states[0].device)
 
         ret = {}
         if self.config.asr_loss_weight > 0:
@@ -52,7 +52,7 @@ class Wav2All(nn.Module):
         if self.config.diar_loss_weight > 0:
             diarization_logits = self.diarization_ffn(hidden_states[self.config.diarization_layer_id])
             diarization_loss, best_alignments = batch_pit_loss(diarization_labels, diarization_logits, self.config.num_speakers)
-            ret['diarization_loss'] = float(diarization_loss)
+            ret['diarization_loss'] = diarization_loss
             ret['diarization_logits'] = diarization_logits
             ret['diarization_alignment'] = best_alignments
             total_loss += diarization_loss * self.config.diar_loss_weight
@@ -61,7 +61,7 @@ class Wav2All(nn.Module):
             classification_logits = self.classification_ffn(hidden_states[self.config.classification_layer_id]).mean(
                 dim=1)
             classification_loss = nn.CrossEntropyLoss()(classification_logits, classification_labels)
-            ret['classification_loss'] = float(classification_loss)
+            ret['classification_loss'] = classification_loss
             ret['classification_logits'] = classification_logits
             ret['classification_labels'] = classification_labels
             total_loss += classification_loss * self.config.clf_loss_weight
