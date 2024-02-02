@@ -38,6 +38,7 @@ class TrainerConfig:
     logs_frequency_batches: int = 1
     save_strategy: str = 'end'
     push_to_hub: bool = True
+    mixed_precision: str = None
 
 
 class MangoTrainer:
@@ -61,7 +62,8 @@ class MangoTrainer:
         self.project_dir = pathlib.Path('output').joinpath(self.config.model_name)
         if accelerator is None:
             accelerator = accelerate.Accelerator(log_with='tensorboard',
-                                                 project_dir=self.project_dir)
+                                                 project_dir=self.project_dir,
+                                                 mixed_precision = self.config.mixed_precision)
         self.accelerator = accelerator
         if optimizer is None:
             optimizer = torch.optim.Adam(model.parameters())
