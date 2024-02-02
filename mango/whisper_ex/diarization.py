@@ -1,6 +1,6 @@
 from torch import nn
 from transformers.models.whisper.modeling_whisper import WhisperConfig, WhisperModel
-from mango.utils.diarization import batch_pit_loss
+from ..utils.diarization import batch_pit_loss
 
 class WhisperConfigForSpeakerDiarization(WhisperConfig):
     def __init__(self, max_num_speakers: int = 2, *args, **kwargs):
