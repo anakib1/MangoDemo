@@ -2,18 +2,22 @@ import traceback
 from mango.classification import DummyClassifier, BaseClassifierConfig, WhisperClassifierConfig, \
     WhisperClassifier
 from mango.utils.diarization import draw_diarization
-from mango.diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer
+from mango.diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer, \
+    EENDConfig, EENDDiarizer
 from mango.transcription import DummyTranscriptor, WhisperTranscriptionConfig, WhisperTranscriptor
 import gradio as gr
+import os
+from huggingface_hub import login
 
-safe = None
+login(token=os.getenv('HF_TOKEN'))
 
 transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='anakib1/whisper-asr-0.1',
                                                               processor_checkpoint='anakib1/whisper-asr-0.1',
                                                               language='uk'))
-diarizer = WhisperDiarizer(WhisperBasedDiarizationConfig(whisper_checkpoint='anakib1/whisper-small-diarization-0.3',
-                                                         processor_checkpoint='anakib1/whisper-small-diarization-0.3',
-                                                         max_num_speakers=3))
+diarizer = EENDDiarizer(EENDConfig(hf_api_model_path='anakib1/eend-sa',
+                                   hf_api_model_name='model.pt',
+                                   hf_api_processor_path='openai/whisper-small',
+                                   max_num_speakers=2))
 classifier = WhisperClassifier(WhisperClassifierConfig(whisper_checkpoint='anakib1/whisper-tiny-urban',
                                                        processor_checkpoint='openai/whisper-tiny'))
 
