@@ -1,15 +1,15 @@
 import traceback
-from mango.classification import DummyClassifier, BaseClassifierConfig, WhisperClassifierConfig, \
+from .classification import DummyClassifier, BaseClassifierConfig, WhisperClassifierConfig, \
     WhisperClassifier
-from mango.utils.diarization import draw_diarization
-from mango.diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer, \
+from .utils.diarization import draw_diarization
+from .diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer, \
     EENDConfig, EENDDiarizer
-from mango.transcription import DummyTranscriptor, WhisperTranscriptionConfig, WhisperTranscriptor
+from .transcription import DummyTranscriptor, WhisperTranscriptionConfig, WhisperTranscriptor
 import gradio as gr
 import os
 from huggingface_hub import login
 
-login(token=os.getenv('HF_TOKEN'))
+login(token=os.getenv('HF_TOKEN', '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'))
 
 transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='anakib1/whisper-asr-0.1',
                                                               processor_checkpoint='anakib1/whisper-asr-0.1',
