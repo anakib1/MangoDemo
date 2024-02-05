@@ -99,6 +99,7 @@ class MangoTrainer:
         if self.config.use_tensorboard and self.accelerator.is_main_process:
             hps = {"num_steps": num_epochs * len(self.train_loader),
                    "learning_rate": self.config.lr}
+            hps.update(self.hparams)
             self.accelerator.init_trackers(f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}', config=hps)
 
         for epoch in range(num_epochs):
