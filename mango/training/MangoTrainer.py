@@ -58,6 +58,8 @@ class MangoTrainer:
         self.train_bar = None
         self.config = config
         self.model = model
+        self.hparams = {}
+        self.hparams.update(asdict(self.model.config))
         self.train_loader = train_loader
         self.eval_loader = eval_loader
         self.project_dir = pathlib.Path('output').joinpath(self.config.model_name)
@@ -70,10 +72,10 @@ class MangoTrainer:
             optimizer = torch.optim.Adam(model.parameters(), lr=self.config.lr)
         self.optimizer = optimizer
 
-        self.model = accelerator.prepare_model(self.model)
-        self.optimizer = accelerator.prepare_optimizer(self.optimizer)
-        self.train_loader = accelerator.prepare_data_loader(self.train_loader)
-        self.eval_loader = accelerator.prepare_data_loader(self.eval_loader)
+        self.model, self.optimizer, self.train_loader, self.eval_loader = accelerator.prepare(self.model,
+                                                                                              self.optimizer,
+                                                                                              self.train_loader,
+                                                                                              self.eval_loader)
         self.api = HfApi()
         self.global_train_step = 0
         self.global_eval_step = 0
@@ -96,9 +98,7 @@ class MangoTrainer:
 
         if self.config.use_tensorboard and self.accelerator.is_main_process:
             hps = {"num_steps": num_epochs * len(self.train_loader),
-                   "batch_size": self.train_loader.batch_size,
                    "learning_rate": self.config.lr}
-            hps.update(asdict(self.model.config))
             self.accelerator.init_trackers(f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}', config=hps)
 
         for epoch in range(num_epochs):
