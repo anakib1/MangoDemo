@@ -10,6 +10,7 @@ from typing import List, Tuple
 
 @dataclass
 class DatasetMixerConfig:
+    min_speakers: int = 1
     max_speakers: int = 2
     max_utterance_length: float = 30
     no_overlap: bool = False
@@ -103,7 +104,7 @@ class DatasetMixer:
         Generates new synthetic example.
         :return: MixedExample
         """
-        num_speakers = np.random.randint(2, self.config.max_speakers + 1)
+        num_speakers = np.random.randint(self.config.min_speakers, self.config.max_speakers + 1)
         speakers = np.random.choice(list(self.speakers2utterance.keys()), num_speakers)
 
         total_length = int(self.config.max_utterance_length * self.config.output_sampling_rate)
