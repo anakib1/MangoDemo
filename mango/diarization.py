@@ -71,7 +71,7 @@ class EENDDiarizer(BaseDiarizer):
         super().__init__(config)
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.eend = MangoEEND(InternalEENDConfig(num_speakers=config.max_num_speakers))
+        self.eend = MangoEEND(InternalEENDConfig(num_speakers=config.max_num_speakers, d_model=384, n_layers=4))
         model_weights = hf_hub_download(repo_id=config.hf_api_model_path,
                                         filename=config.hf_api_model_name)
         self.eend.load_state_dict(torch.load(model_weights, self.device))

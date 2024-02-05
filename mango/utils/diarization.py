@@ -5,6 +5,7 @@ from itertools import permutations
 from torch.nn import functional as F
 import logging
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
 import io
 
@@ -93,10 +94,12 @@ def draw_diarization(data: np.ndarray) -> np.ndarray:
     # assumes frame resolution 20 ms
     res = np.zeros((int(np.ceil(data.shape[0] / 50)), data.shape[1]))
     for j in range(0, data.shape[0], 50):
-        res[j//50, :] = np.median(data[j:j+50, :], axis=0)
+        res[j//50, :] = np.median(data[j:j+50, :], axis=0) >= 0.5
 
     fig, ax = plt.subplots()
-    plt.imshow(res.T)
+    ax.imshow(res.T, cmap=ListedColormap(['white', 'black']))
+    ax.set_yticks(np.arange(data.shape[1]))
+    ax.set_yticklabels([f'Speaker {i}' for i in range(data.shape[1])])
     with io.BytesIO() as buff:
         fig.savefig(buff, format='png')
         buff.seek(0)

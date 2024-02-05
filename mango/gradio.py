@@ -17,7 +17,7 @@ transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint
 diarizer = EENDDiarizer(EENDConfig(hf_api_model_path='anakib1/eend-sa',
                                    hf_api_model_name='model.pt',
                                    hf_api_processor_path='openai/whisper-small',
-                                   max_num_speakers=2))
+                                   max_num_speakers=3))
 classifier = WhisperClassifier(WhisperClassifierConfig(whisper_checkpoint='anakib1/whisper-tiny-urban',
                                                        processor_checkpoint='openai/whisper-tiny'))
 
