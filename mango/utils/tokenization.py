@@ -1,6 +1,7 @@
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2CTCTokenizer, Wav2Vec2Processor
 import json
 import datasets
+import re
 
 
 def prepare_for_wav2vec2(repo_id: str, dataset: datasets.Dataset, text_column: str) -> None:
@@ -32,3 +33,12 @@ def prepare_for_wav2vec2(repo_id: str, dataset: datasets.Dataset, text_column: s
 
     processor = Wav2Vec2Processor(feature_extractor=feature_extractor, tokenizer=tokenizer)
     processor.push_to_hub(repo_id)
+
+
+def retain_cyrillic(dataset: datasets.Dataset, text_column: str) -> datasets.Dataset:
+    def remove_special_characters(batch):
+        return {text_column: ' '.join(re.sub(
+            r'[^а-яА-ЯіїєґІЇЄҐ\s-]|—|\d+|_|(?:\s|^)[-]|[-](?:\s|$)|[-«»]|\n', '',
+            batch[text_column].lower()).split())}
+
+    return dataset.map(remove_special_characters, batched=False)
