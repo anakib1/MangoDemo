@@ -40,6 +40,7 @@ class TrainerConfig:
     push_to_hub: bool = True
     mixed_precision: str = None
     lr: float = 1e-3
+    weight_decay: float = 1e-3
 
 
 class MangoTrainer:
@@ -69,7 +70,7 @@ class MangoTrainer:
                                                  mixed_precision=self.config.mixed_precision)
         self.accelerator = accelerator
         if optimizer is None:
-            optimizer = torch.optim.Adam(model.parameters(), lr=self.config.lr)
+            optimizer = torch.optim.AdamW(model.parameters(), lr=self.config.lr, weight_decay=self.config.weight_decay)
         self.optimizer = optimizer
 
         self.model, self.optimizer, self.train_loader, self.eval_loader = accelerator.prepare(self.model,
