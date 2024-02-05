@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 import torch
 import accelerate
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import List, Any, Dict, Union
 import logging
 from tqdm.auto import tqdm
@@ -39,6 +39,7 @@ class TrainerConfig:
     save_strategy: str = 'end'
     push_to_hub: bool = True
     mixed_precision: str = None
+    lr: float = 1e-3
 
 
 class MangoTrainer:
@@ -63,10 +64,10 @@ class MangoTrainer:
         if accelerator is None:
             accelerator = accelerate.Accelerator(log_with='tensorboard',
                                                  project_dir=self.project_dir,
-                                                 mixed_precision = self.config.mixed_precision)
+                                                 mixed_precision=self.config.mixed_precision)
         self.accelerator = accelerator
         if optimizer is None:
-            optimizer = torch.optim.Adam(model.parameters())
+            optimizer = torch.optim.Adam(model.parameters(), lr=self.config.lr)
         self.optimizer = optimizer
 
         self.model = accelerator.prepare_model(self.model)
@@ -93,8 +94,12 @@ class MangoTrainer:
         if compute_metrics is None:
             compute_metrics = lambda output: {}
 
-        if self.config.use_tensorboard:
-            self.accelerator.init_trackers(f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}')
+        if self.config.use_tensorboard and self.accelerator.is_main_process:
+            hps = {"num_steps": num_epochs * len(self.train_loader),
+                   "batch_size": self.train_loader.batch_size,
+                   "learning_rate": self.config.lr}
+            hps.update(asdict(self.model.config))
+            self.accelerator.init_trackers(f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}', config=hps)
 
         for epoch in range(num_epochs):
             train_outputs = self.train_iteration(epoch)
