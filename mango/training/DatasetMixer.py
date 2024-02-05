@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import datasets
 from datasets import Audio
+from typing import List, Tuple
 
 
 @dataclass
@@ -47,6 +48,7 @@ class DatasetMixer:
     """
     Class that mixes speakers and noises into synthetic dataset.
     """
+
     def __init__(self, config: DatasetMixerConfig, utterances: datasets.Dataset, noises: datasets.Dataset, rirs=None):
         """
         Instantiates a new DatasetMixer.
@@ -68,6 +70,7 @@ class DatasetMixer:
         self.utterances = utterances
         self.noises = noises
         self.config = config
+        self.frame_resolution = int(self.config.output_sampling_rate / 1_000 * self.config.frame_resolution_ms)
 
         self.snrs = [10, 15, 20]
 
@@ -101,46 +104,19 @@ class DatasetMixer:
         :return: MixedExample
         """
         num_speakers = np.random.randint(2, self.config.max_speakers + 1)
-        speakers = np.random.choice(list(self.speakers2utterance.keys()), self.config.max_speakers)
+        speakers = np.random.choice(list(self.speakers2utterance.keys()), num_speakers)
 
         total_length = int(self.config.max_utterance_length * self.config.output_sampling_rate)
-        filled_length = 0
 
         audio = torch.zeros(total_length)
-        frame_resolution = int(self.config.output_sampling_rate / 1_000 * self.config.frame_resolution_ms)
-        diarization = torch.zeros(total_length // frame_resolution, num_speakers, dtype=torch.long)
+        diarization = torch.zeros(total_length // self.frame_resolution, self.config.max_speakers, dtype=torch.long)
 
         transcriptions = []
-
-        while filled_length < total_length:
-            speaker_id = np.random.randint(num_speakers)
-            speaker = speakers[speaker_id]
-
-            n_u = np.random.randint(self.config.min_repetitions, self.config.max_repetitions)
-            for u in range(n_u):
-                if filled_length >= total_length:
-                    break
-
-                utterance_id = int(np.random.choice(self.speakers2utterance[speaker]))
-                utterance_audio: torch.Tensor = self.utterances[utterance_id]['audio']['array']
-
-                max_size = total_length - filled_length
-                loaded_audio = utterance_audio[:max_size]
-
-                diarization[filled_length // frame_resolution:filled_length // frame_resolution + len(
-                    loaded_audio) // frame_resolution, speaker_id] = 1
-                audio[filled_length: filled_length + len(loaded_audio)] = loaded_audio
-
-                filled_length += len(utterance_audio)
-
-                transcriptions.append(self.utterances[utterance_id]['transcription'])
-
-                # add noise.
-
-                d = int(np.random.exponential(scale=self.config.beta) * self.config.output_sampling_rate)
-                d = min(d, max_size)
-
-                filled_length += d
+        if self.config.no_overlap:
+            self.generate_no_overlap(audio, diarization, transcriptions, speakers)
+        else:
+            self.generate_overlap(audio, diarization, transcriptions, speakers)
+        transcriptions = self.process_transcriptions(transcriptions)
 
         background_noise_cls = np.random.choice(list(self.noise2id.keys()))
         noise_row_id = int(np.random.choice(self.noise2audio[background_noise_cls]))
@@ -160,6 +136,90 @@ class DatasetMixer:
             diarization=diarization,
             transcription=' '.join(transcriptions)
         )
+
+    def generate_no_overlap(self, audio: torch.Tensor, diarization: torch.Tensor, transcriptions: List,
+                            speakers: np.array) -> None:
+        """
+        Generates example without overlapped speech.
+        :param audio: place for audio to be added
+        :param diarization: place for diarization to be added
+        :param transcriptions: place for transcriptions in the correct order
+        :param speakers: speakers to use for generation
+        :return: None
+        """
+        filled_length = 0
+        total_length = len(audio)
+        num_speakers = len(speakers)
+
+        while filled_length < total_length:
+            speaker_index = np.random.randint(num_speakers)
+            speaker = speakers[speaker_index]
+            filled_length = self.add_one_speaker(audio, diarization, transcriptions, speaker, filled_length)
+
+    def generate_overlap(self, audio: torch.Tensor, diarization: torch.Tensor, transcriptions: List,
+                         speakers: np.array) -> None:
+        """
+        Generates example with overlapped speach
+        :param audio: place for audio to be added
+        :param diarization: place for diarization to be added
+        :param transcriptions: place for transcriptions in the correct order
+        :param speakers: speakers to use for generation
+        :return: None
+        """
+        for speaker_index, speaker in enumerate(speakers):
+            self.add_one_speaker(audio, diarization, transcriptions, speaker_index, speaker, 0)
+
+    def add_one_speaker(self, audio: torch.Tensor, diarization: torch.Tensor, transcriptions: List, speaker_index: int,
+                        speaker, filled_length: int) -> int:
+        """
+        Appends one speaker's random utterances to the filled_length part of audio.
+        :param audio: audio to append
+        :param diarization: diarization array to fill
+        :param transcriptions: transcription array to fill
+        :param speaker_index: index of speaker in terms of the current example
+        :param speaker: speaker name in terms of the whole mixer
+        :param filled_length: start time to begin appending
+        :return: None
+        """
+        n_u = np.random.randint(self.config.min_repetitions, self.config.max_repetitions + 1)
+        for u in range(n_u):
+            if filled_length >= audio.shape[0]:
+                break
+
+            utterance_id = int(np.random.choice(self.speakers2utterance[speaker]))
+            utterance_audio: torch.Tensor = self.utterances[utterance_id]['audio']['array']
+
+            max_size = audio.shape[0] - filled_length
+
+            d = int(np.random.exponential(scale=self.config.beta) * self.config.output_sampling_rate)
+            d = min(d, max_size)
+
+            filled_length += d
+            max_size -= d
+
+            loaded_audio = utterance_audio
+            if len(loaded_audio) * 0.8 > max_size:
+                break
+            loaded_audio = loaded_audio[:max_size]
+
+            diarization[filled_length // self.frame_resolution:filled_length // self.frame_resolution + len(
+                loaded_audio) // self.frame_resolution, speaker_index] = 1
+            audio[filled_length: filled_length + len(loaded_audio)] += loaded_audio
+
+            transcriptions.append((filled_length, self.utterances[utterance_id]['transcription']))
+            filled_length += len(utterance_audio)
+
+            # add blanks.
+
+        return filled_length
+
+    def process_transcriptions(self, transcriptions: List[Tuple[int, str]]) -> List[str]:
+        """
+        Place for implementing more sophisticated methods of transcription processing, like adding <ch> tokens etc.
+        :param transcriptions: list of transcriptions with timestamps.
+        :return: List[str] - processed transcriptions.
+        """
+        return [x[1] for x in sorted(transcriptions, key=lambda x: x[0])]
 
 
 class DatasetMixerWrapped(DatasetMixer, torch.utils.data.Dataset):
