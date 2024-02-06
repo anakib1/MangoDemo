@@ -129,9 +129,6 @@ class MangoTrainer:
                     logger.info(f"Stopping training at epoch {epoch}. Early stopping criterion reached")
                     self.accelerator.set_trigger()
 
-            if self.accelerator.check_trigger():
-                break
-
             self.accelerator.wait_for_everyone()
             if self.config.scheduler_strategy == 'epoch':
                 self.scheduler.step()
@@ -149,6 +146,9 @@ class MangoTrainer:
                 self.save_model()
 
             logger.info(f'Epoch {epoch} passed')
+
+            if self.accelerator.check_trigger():
+                break
 
         if self.config.save_strategy == 'end':
             self.save_model()
