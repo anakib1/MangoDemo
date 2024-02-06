@@ -43,6 +43,7 @@ class TrainerConfig:
     weight_decay: float = 1e-3
     scheduler_strategy: str = 'batch'
     early_stopping_patience: int = None
+    hf_user: str = 'anakib1'
 
 
 class MangoTrainer:
@@ -163,7 +164,7 @@ class MangoTrainer:
             torch.save(unwrapped_model.state_dict(), f'{self.run_dir}/model.pt')
 
             if self.config.push_to_hub:
-                repo_id = f'anakib1/{self.config.model_name}'
+                repo_id = f'{self.config.hf_user}/{self.config.model_name}'
                 if not self.api.repo_exists(repo_id):
                     self.api.create_repo(repo_id, repo_type='model')
                 self.api.upload_folder(
