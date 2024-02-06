@@ -56,6 +56,8 @@ class MangoTrainer:
         :param accelerator: accelerator instance for custom config
         :param optimizer: optimizer instance for custom gradient descend
         """
+        self.run_dir = None
+        self.epoch = None
         self.eval_bar = None
         self.train_bar = None
         self.config = config
@@ -104,13 +106,17 @@ class MangoTrainer:
             compute_metrics = lambda output: {}
 
         if self.config.use_tensorboard and self.accelerator.is_main_process:
+            run_name = f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}'
+            self.run_dir = self.project_dir.joinpath(run_name)
             hps = {"num_steps": num_epochs * len(self.train_loader),
                    "learning_rate": self.config.lr,
-                   "weight_decay" : self.config.weight_decay}
+                   "weight_decay": self.config.weight_decay}
             hps.update(self.hparams)
-            self.accelerator.init_trackers(f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}', config=hps)
+            self.accelerator.init_trackers(run_name, config=hps)
 
         for epoch in range(num_epochs):
+            self.epoch = epoch
+
             train_outputs = self.train_iteration(epoch)
             self.accelerator.wait_for_everyone()
             if self.config.scheduler_strategy == 'epoch':
@@ -141,7 +147,7 @@ class MangoTrainer:
         try:
             pathlib.Path(self.project_dir).mkdir(parents=True, exist_ok=True)
             unwrapped_model = self.accelerator.unwrap_model(self.model)
-            torch.save(unwrapped_model.state_dict(), f'{self.project_dir}/model.pt')
+            torch.save(unwrapped_model.state_dict(), f'{self.run_dir}/model.pt')
 
             if self.config.push_to_hub:
                 repo_id = f'anakib1/{self.config.model_name}'
@@ -162,6 +168,7 @@ class MangoTrainer:
             if self.config.use_tensorboard:
                 for k, v in results.items():
                     self.accelerator.log({f'{k}/{iteration_class}': v}, outputs.epoch_id)
+                self.accelerator.log({f'lr/{iteration_class}' : self.scheduler.get_last_lr()[0]}, outputs.epoch_id)
         except Exception as ex:
             logger.error(f"Logging failed. Exception: {ex}")
 
@@ -196,7 +203,7 @@ class MangoTrainer:
         train_outputs = {}
         losses = []
 
-        for batch in self.train_loader:
+        for i, batch in enumerate(self.train_loader):
             self.optimizer.zero_grad()
             output = self.model(**batch)
             if 'loss' not in output:
@@ -207,7 +214,10 @@ class MangoTrainer:
 
             self.optimizer.step()
             if self.config.scheduler_strategy == 'batch':
-                self.scheduler.step()
+                if isinstance(self.scheduler, torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
+                    self.scheduler.step(self.epoch + i / len(self.train_loader))
+                else:
+                    self.scheduler.step()
 
             for k, v in output.items():
                 if k not in train_outputs:

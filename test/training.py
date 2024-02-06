@@ -47,12 +47,12 @@ class TrainerTest(unittest.TestCase):
         loader = torch.utils.data.DataLoader(data, batch_size=16)
         model = MockModel()
         optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=1e-2, epochs=4, steps_per_epoch=len(loader))
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=4, eta_min=1e-4)
 
         trainer_config = TrainerConfig(push_to_hub=False, model_name='mock', scheduler_strategy='batch')
         trainer = MangoTrainer(model, loader, loader, trainer_config, optimizer=optimizer, scheduler=scheduler)
 
-        trainer.train(4)
+        trainer.train(16)
 
 
 if __name__ == '__main__':
