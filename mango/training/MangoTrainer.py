@@ -41,11 +41,12 @@ class TrainerConfig:
     mixed_precision: str = None
     lr: float = 1e-3
     weight_decay: float = 1e-3
+    scheduler_strategy: str = 'batch'
 
 
 class MangoTrainer:
     def __init__(self, model: torch.nn.Module, train_loader: DataLoader,
-                 eval_loader: DataLoader, config: TrainerConfig, accelerator=None, optimizer=None):
+                 eval_loader: DataLoader, config: TrainerConfig, accelerator=None, optimizer=None, scheduler=None):
         """
         Instantiates a MangoTrainer instance
         :param model: model to train. could any nn.Module that returns dict with 'loss' key.
@@ -73,8 +74,13 @@ class MangoTrainer:
             optimizer = torch.optim.AdamW(model.parameters(), lr=self.config.lr, weight_decay=self.config.weight_decay)
         self.optimizer = optimizer
 
-        self.model, self.optimizer, self.train_loader, self.eval_loader = accelerator.prepare(self.model,
+        if scheduler is None:
+            scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer=self.optimizer, last_epoch=-1)
+        self.scheduler = scheduler
+
+        self.model, self.optimizer, self.scheduler, self.train_loader, self.eval_loader = accelerator.prepare(self.model,
                                                                                               self.optimizer,
+                                                                                              self.scheduler,
                                                                                               self.train_loader,
                                                                                               self.eval_loader)
         self.api = HfApi()
@@ -99,13 +105,16 @@ class MangoTrainer:
 
         if self.config.use_tensorboard and self.accelerator.is_main_process:
             hps = {"num_steps": num_epochs * len(self.train_loader),
-                   "learning_rate": self.config.lr}
+                   "learning_rate": self.config.lr,
+                   "weight_decay" : self.config.weight_decay}
             hps.update(self.hparams)
             self.accelerator.init_trackers(f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}', config=hps)
 
         for epoch in range(num_epochs):
             train_outputs = self.train_iteration(epoch)
             self.accelerator.wait_for_everyone()
+            if self.config.scheduler_strategy == 'epoch':
+                self.scheduler.step()
 
             metrics = compute_metrics(train_outputs)
             self.log_results(metrics, train_outputs)
@@ -197,6 +206,8 @@ class MangoTrainer:
             self.accelerator.backward(loss)
 
             self.optimizer.step()
+            if self.config.scheduler_strategy == 'batch':
+                self.scheduler.step()
 
             for k, v in output.items():
                 if k not in train_outputs:
