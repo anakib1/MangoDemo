@@ -42,6 +42,8 @@ class TrainerConfig:
     lr: float = 1e-3
     weight_decay: float = 1e-3
     scheduler_strategy: str = 'batch'
+    early_stopping_patience: int = None
+    hf_user: str = 'anakib1'
 
 
 class MangoTrainer:
@@ -115,10 +117,19 @@ class MangoTrainer:
             hps.update(self.hparams)
             self.accelerator.init_trackers(run_name, config=hps)
 
+        train_losses = []
+
         for epoch in range(num_epochs):
             self.epoch = epoch
 
             train_outputs = self.train_iteration(epoch)
+
+            train_losses.append(np.mean(train_outputs.losses))
+            if self.config.early_stopping_patience is not None:
+                if len(train_losses) > self.config.early_stopping_patience and np.max(train_losses[:-self.config.early_stopping_patience]) < np.max(train_losses[-self.config.early_stopping_patience:]):
+                    logger.info(f"Stopping training at epoch {epoch}. Early stopping criterion reached")
+                    self.accelerator.set_trigger()
+
             self.accelerator.wait_for_everyone()
             if self.config.scheduler_strategy == 'epoch':
                 self.scheduler.step()
@@ -137,6 +148,9 @@ class MangoTrainer:
 
             logger.info(f'Epoch {epoch} passed')
 
+            if self.accelerator.check_trigger():
+                break
+
         if self.config.save_strategy == 'end':
             self.save_model()
 
@@ -151,7 +165,7 @@ class MangoTrainer:
             torch.save(unwrapped_model.state_dict(), f'{self.run_dir}/model.pt')
 
             if self.config.push_to_hub:
-                repo_id = f'anakib1/{self.config.model_name}'
+                repo_id = f'{self.config.hf_user}/{self.config.model_name}'
                 if not self.api.repo_exists(repo_id):
                     self.api.create_repo(repo_id, repo_type='model')
                 self.api.upload_folder(
