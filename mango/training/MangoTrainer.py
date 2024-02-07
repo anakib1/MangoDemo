@@ -80,11 +80,12 @@ class MangoTrainer:
             scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer=self.optimizer, last_epoch=-1)
         self.scheduler = scheduler
 
-        self.model, self.optimizer, self.scheduler, self.train_loader, self.eval_loader = accelerator.prepare(self.model,
-                                                                                              self.optimizer,
-                                                                                              self.scheduler,
-                                                                                              self.train_loader,
-                                                                                              self.eval_loader)
+        self.model, self.optimizer, self.scheduler, self.train_loader, self.eval_loader = accelerator.prepare(
+            self.model,
+            self.optimizer,
+            self.scheduler,
+            self.train_loader,
+            self.eval_loader)
         self.api = HfApi()
         self.global_train_step = 0
         self.global_eval_step = 0
@@ -145,7 +146,7 @@ class MangoTrainer:
         if not self.accelerator.is_main_process:
             return
         try:
-            pathlib.Path(self.project_dir).mkdir(parents=True, exist_ok=True)
+            pathlib.Path(self.run_dir).mkdir(parents=True, exist_ok=True)
             unwrapped_model = self.accelerator.unwrap_model(self.model)
             torch.save(unwrapped_model.state_dict(), f'{self.run_dir}/model.pt')
 
@@ -168,7 +169,7 @@ class MangoTrainer:
             if self.config.use_tensorboard:
                 for k, v in results.items():
                     self.accelerator.log({f'{k}/{iteration_class}': v}, outputs.epoch_id)
-                self.accelerator.log({f'lr/{iteration_class}' : self.scheduler.get_last_lr()[0]}, outputs.epoch_id)
+                self.accelerator.log({f'lr/{iteration_class}': self.scheduler.get_last_lr()[0]}, outputs.epoch_id)
         except Exception as ex:
             logger.error(f"Logging failed. Exception: {ex}")
 

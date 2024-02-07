@@ -14,9 +14,9 @@ class InternalWav2AllConfig:
     ffn_dim: int = 512
     num_speakers: int = 2
     num_noises: int = 2
-    asr_loss_weight = 1.0
-    diar_loss_weight = 1.0
-    clf_loss_weight = 1.0
+    asr_loss_weight: float = 1.0
+    diar_loss_weight: float = 1.0
+    clf_loss_weight: float = 1.0
     freeze_feature_extractor: bool = True
 
 
