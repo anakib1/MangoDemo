@@ -130,7 +130,7 @@ class MangoTrainer:
 
             train_losses.append(np.mean(train_outputs.losses))
             if self.config.early_stopping_patience is not None:
-                if len(train_losses) > self.config.early_stopping_patience and np.max(train_losses[:-self.config.early_stopping_patience]) < np.max(train_losses[-self.config.early_stopping_patience:]):
+                if len(train_losses) > self.config.early_stopping_patience and np.min(train_losses[:-self.config.early_stopping_patience]) < np.min(train_losses[-self.config.early_stopping_patience:]):
                     logger.info(f"Stopping training at epoch {epoch}. Early stopping criterion reached")
                     self.accelerator.set_trigger()
 
