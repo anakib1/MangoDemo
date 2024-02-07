@@ -105,7 +105,7 @@ class DatasetMixer:
         :return: MixedExample
         """
         num_speakers = np.random.randint(self.config.min_speakers, self.config.max_speakers + 1)
-        speakers = np.random.choice(list(self.speakers2utterance.keys()), num_speakers)
+        speakers = np.random.choice(list(self.speakers2utterance.keys()), num_speakers, replace=False)
 
         total_length = int(self.config.max_utterance_length * self.config.output_sampling_rate)
 
@@ -131,6 +131,10 @@ class DatasetMixer:
             dim=0)
 
         audio += background_noise_audio * calculate_adjustment_coef(audio, background_noise_audio, snr)
+
+        if len(transcriptions) == 0:
+            transcriptions.append('<pad>')  # crutch for wer metric.
+
         return MixedExample(
             audio=audio,
             noise_id=self.noise2id[background_noise_cls],

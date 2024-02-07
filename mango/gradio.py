@@ -15,6 +15,7 @@ transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint
                                                               processor_checkpoint='anakib1/whisper-asr-0.1',
                                                               language='uk'))
 diarizer = EENDDiarizer(EENDConfig(hf_api_model_path='anakib1/eend-sa',
+                                   run_id='run-24-02-06.20-17',
                                    hf_api_model_name='model.pt',
                                    hf_api_processor_path='openai/whisper-small',
                                    max_num_speakers=3))

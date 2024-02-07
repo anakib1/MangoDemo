@@ -60,6 +60,7 @@ class WhisperDiarizer(BaseDiarizer):
 @dataclass
 class EENDConfig(DiarizationConfig):
     hf_api_model_path: str = 'anakib1/eend-sa'
+    run_id: str = None
     hf_api_model_name: str = 'model.pt'
     hf_api_processor_path: str = 'openai/whisper-small'  # todo remove
 
@@ -72,8 +73,10 @@ class EENDDiarizer(BaseDiarizer):
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.eend = MangoEEND(InternalEENDConfig(num_speakers=config.max_num_speakers, d_model=384, n_layers=4))
+        subfolder = f'runs/{self.config.run_id}' if self.config.run_id is not None else None
         model_weights = hf_hub_download(repo_id=config.hf_api_model_path,
-                                        filename=config.hf_api_model_name)
+                                        subfolder=subfolder,
+                                        filename='model.pt')
         self.eend.load_state_dict(torch.load(model_weights, self.device))
         self.eend.eval()
         self.processor = WhisperProcessor.from_pretrained(config.hf_api_processor_path)
