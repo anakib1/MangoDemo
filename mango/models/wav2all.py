@@ -33,17 +33,27 @@ class Wav2All(nn.Module):
         self.wav2vec2: Wav2Vec2ForCTC = Wav2Vec2ForCTC.from_pretrained(config.wav2vec_checkpoint)
         if self.config.freeze_feature_extractor:
             self.wav2vec2.freeze_feature_extractor()
-        self.diarization_ffn = nn.Sequential(nn.Linear(self.wav2vec2_config.output_hidden_size, self.config.ffn_dim),
-                                             nn.Linear(self.config.ffn_dim, self.config.num_speakers))
-        self.classification_ffn = nn.Sequential(nn.Linear(self.wav2vec2_config.output_hidden_size, self.config.ffn_dim),
-                                                nn.Linear(self.config.ffn_dim, self.config.num_noises))
 
-    def forward(self, input_values: torch.Tensor, attention_mask: torch.Tensor = None, labels: torch.Tensor = None, diarization_labels: torch.Tensor = None,
+        self.diarization_ffn = None
+        if self.config.diar_loss_weight > 0:
+            self.diarization_ffn = nn.Sequential(
+                nn.Linear(self.wav2vec2_config.output_hidden_size, self.config.ffn_dim),
+                nn.Linear(self.config.ffn_dim, self.config.num_speakers))
+
+        self.classification_ffn = None
+        if self.config.clf_loss_weight > 0:
+            self.classification_ffn = nn.Sequential(
+                nn.Linear(self.wav2vec2_config.output_hidden_size, self.config.ffn_dim),
+                nn.Linear(self.config.ffn_dim, self.config.num_noises))
+
+    def forward(self, input_values: torch.Tensor, attention_mask: torch.Tensor = None, labels: torch.Tensor = None,
+                diarization_labels: torch.Tensor = None,
                 classification_labels: torch.Tensor = None) -> Dict[str, torch.Tensor]:
-        wav2vec2output = self.wav2vec2(input_values, attention_mask = attention_mask, labels = labels, output_hidden_states=True)
+        wav2vec2output = self.wav2vec2(input_values, attention_mask=attention_mask, labels=labels,
+                                       output_hidden_states=True)
         hidden_states = wav2vec2output.hidden_states
 
-        total_loss = torch.tensor(0.0, device = hidden_states[0].device)
+        total_loss = torch.tensor(0.0, device=hidden_states[0].device)
 
         ret = {}
         if self.config.asr_loss_weight > 0:
@@ -54,7 +64,8 @@ class Wav2All(nn.Module):
 
         if self.config.diar_loss_weight > 0:
             diarization_logits = self.diarization_ffn(hidden_states[self.config.diarization_layer_id])
-            diarization_loss, best_alignments = batch_pit_loss(diarization_labels, diarization_logits, self.config.num_speakers)
+            diarization_loss, best_alignments = batch_pit_loss(diarization_labels, diarization_logits,
+                                                               self.config.num_speakers)
             ret['diarization_loss'] = diarization_loss
             ret['diarization_logits'] = diarization_logits
             ret['diarization_alignment'] = best_alignments
