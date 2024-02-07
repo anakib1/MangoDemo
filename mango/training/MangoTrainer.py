@@ -44,6 +44,7 @@ class TrainerConfig:
     scheduler_strategy: str = 'batch'
     early_stopping_patience: int = None
     hf_user: str = 'anakib1'
+    gradient_accumulation_steps: int = 1
 
 
 class MangoTrainer:
@@ -70,9 +71,12 @@ class MangoTrainer:
         self.eval_loader = eval_loader
         self.project_dir = pathlib.Path('output').joinpath(self.config.model_name)
         if accelerator is None:
+            plugin = accelerate.utils.GradientAccumulationPlugin(num_steps=self.config.gradient_accumulation_steps,
+                                                                 sync_with_dataloader=False)
             accelerator = accelerate.Accelerator(log_with='tensorboard',
                                                  project_dir=self.project_dir,
-                                                 mixed_precision=self.config.mixed_precision)
+                                                 mixed_precision=self.config.mixed_precision,
+                                                 gradient_accumulation_plugin=plugin)
         self.accelerator = accelerator
         if optimizer is None:
             optimizer = torch.optim.AdamW(model.parameters(), lr=self.config.lr, weight_decay=self.config.weight_decay)
@@ -219,20 +223,21 @@ class MangoTrainer:
         losses = []
 
         for i, batch in enumerate(self.train_loader):
-            self.optimizer.zero_grad()
-            output = self.model(**batch)
-            if 'loss' not in output:
-                raise Exception("Model 'forward' function did not return 'loss' as expected. ")
-            loss = output['loss']
+            with self.accelerator.accumulate(self.model):
+                self.optimizer.zero_grad()
+                output = self.model(**batch)
+                if 'loss' not in output:
+                    raise Exception("Model 'forward' function did not return 'loss' as expected. ")
+                loss = output['loss']
 
-            self.accelerator.backward(loss)
+                self.accelerator.backward(loss)
 
-            self.optimizer.step()
-            if self.config.scheduler_strategy == 'batch':
-                if isinstance(self.scheduler, torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
-                    self.scheduler.step(self.epoch + i / len(self.train_loader))
-                else:
-                    self.scheduler.step()
+                self.optimizer.step()
+                if self.config.scheduler_strategy == 'batch':
+                    if isinstance(self.scheduler, torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
+                        self.scheduler.step(self.epoch + i / len(self.train_loader))
+                    else:
+                        self.scheduler.step()
 
             for k, v in output.items():
                 if k not in train_outputs:

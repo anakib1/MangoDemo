@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from typing import Dict
 from dataclasses import dataclass
+import copy
 
 
 class MockData(torch.utils.data.Dataset):
@@ -25,7 +26,7 @@ class MockModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.config = MockConfig()
-        self.layers = nn.Sequential(nn.Linear(1000, 512), nn.ReLU(), nn.Linear(512, 512),  nn.ReLU(), nn.Linear(512, 1))
+        self.layers = nn.Sequential(nn.Linear(1000, 512), nn.ReLU(), nn.Linear(512, 512), nn.ReLU(), nn.Linear(512, 1))
 
     def forward(self, input_values: torch.Tensor, label: torch.Tensor = None) -> Dict[str, torch.Tensor]:
         ret = {'pred': self.layers(input_values)}
@@ -73,6 +74,23 @@ class TrainerTest(unittest.TestCase):
         trainer.train(100)
 
         self.assertNotEquals(trainer.epoch, 99)
+
+    def test_accumulation(self):
+        data = MockData()
+        loader = torch.utils.data.DataLoader(data, batch_size=16)
+        model = MockModel()
+
+        weights = copy.deepcopy(next(iter(model.state_dict().values())).cpu())
+
+        trainer_config = TrainerConfig(push_to_hub=False, model_name='mock', scheduler_strategy='batch',
+                                       gradient_accumulation_steps=100)
+        trainer = MangoTrainer(model, loader, loader, trainer_config)
+
+        trainer.train(1)
+
+        weights_after_train = copy.deepcopy(next(iter(model.state_dict().values())).cpu())
+
+        self.assertTrue(((weights - weights_after_train) ** 2).sum() < 1e-3)
 
 
 if __name__ == '__main__':
