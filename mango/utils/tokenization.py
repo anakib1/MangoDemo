@@ -36,9 +36,15 @@ def prepare_for_wav2vec2(repo_id: str, dataset: datasets.Dataset, text_column: s
 
 
 def retain_cyrillic(dataset: datasets.Dataset, text_column: str) -> datasets.Dataset:
-    def remove_special_characters(batch):
+    def remove_special_characters(*args, **kwargs):
+        argument = args[0] if len(args) != 0 else next(iter(kwargs.values()))
         return {text_column: ' '.join(re.sub(
             r'[^а-яА-ЯіїєґІЇЄҐ\s-]|—|\d+|_|(?:\s|^)[-]|[-](?:\s|$)|[-«»]|\n', '',
-            batch[text_column].lower()).split())}
+            argument.lower()).split())}
 
-    return dataset.map(remove_special_characters, batched=False)
+    def filter_out_empty_sequences(*args, **kwargs):
+        argument = args[0] if len(args) != 0 else next(iter(kwargs.values()))
+        return len(argument) > 10
+
+    return (dataset.map(remove_special_characters, batched=False, input_columns=[text_column])
+            .filter(filter_out_empty_sequences, batched=False, input_columns=[text_column]))
