@@ -63,11 +63,15 @@ class SpeakerAttributionCollator:
 
     def __call__(self, batch: List[SpeakerAttributeExample]):
         ret = {}
-        ret['target_asr_ids'] = self.tokenizer([sample.transcription for sample in batch], return_tensors='pt',
-                                               padding='max_length', max_length=256, truncation=True)['input_ids']
+
+        tokenized = self.tokenizer([sample.transcription for sample in batch], return_tensors='pt',
+                                   padding='max_length', max_length=256, truncation=True)
+
+        ret['target_asr_ids'] = tokenized['input_ids'].masked_fill(tokenized['attention_mask'].ne(1), -100)
 
         ret['target_diar_ids'] = torch.stack(
-            [torch.cat([sample.speaker_attributions, torch.empty(256 - len(sample.speaker_attributions), dtype=torch.long).fill_(-100)])
+            [torch.cat([sample.speaker_attributions,
+                        torch.empty(256 - len(sample.speaker_attributions), dtype=torch.long).fill_(-100)])
              for sample in batch])
 
         features = [self.feature_extractor(sample.audio, sampling_rate=16_000, return_tensors='pt').input_features[0]

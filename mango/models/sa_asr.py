@@ -111,5 +111,7 @@ class SAASR(nn.Module):
         return {
             'asr_outputs': asr_outputs,
             'diar_outputs': diar_outputs,
+            'asr_labels': target_asr_ids,
+            'diar_labels': target_diar_ids,
             'loss': loss
         }
