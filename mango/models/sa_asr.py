@@ -17,6 +17,7 @@ class SAASRConfig:
     audio_sequence_length: int = 1500
     vocab_size: int = 60
     gama: float = 1
+    pad_token_id: int = 0
 
 
 SOS_token = 0
@@ -96,6 +97,7 @@ class SAASR(nn.Module):
 
             if target_asr_ids is not None:
                 current_token = target_asr_ids[:, i].unsqueeze(1)
+                current_token = current_token.masked_fill(current_token == -100, self.config.pad_token_id)
             else:
                 _, topi = asr_logits.topk(1)
                 current_token = topi.squeeze(-1).detach()
