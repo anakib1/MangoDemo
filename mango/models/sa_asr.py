@@ -103,8 +103,6 @@ class SAASR(nn.Module):
         asr_outputs = torch.stack(asr_outputs, dim=1)
         diar_outputs = torch.stack(diar_outputs, dim=1)
 
-        print (asr_outputs.shape)
-
         loss = None
         if target_diar_ids is not None and target_asr_ids is not None:
             loss = (F.nll_loss(asr_outputs.transpose(2, 1), target_asr_ids) + self.config.gama *

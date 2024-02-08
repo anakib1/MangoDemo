@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import datasets
 from datasets import Audio
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 
 @dataclass
@@ -62,8 +62,8 @@ class DatasetMixer:
         self.num_noises = None
         self.noise2id = None
         self.noise2audio = None
-        self.label2id = None
-        self.speaker2id = None
+        self.label2id: Dict[str, int] = None
+        self.speaker2id: Dict[str, int] = None
         self.speakers2utterance = None
         if rirs is not None:
             logging.warning('RIRs are not yet supported.')
@@ -119,6 +119,21 @@ class DatasetMixer:
             self.generate_overlap(audio, diarization, transcriptions, speakers)
         transcriptions = self.process_transcriptions(transcriptions)
 
+        background_noise_cls = self.add_noise_to_audio(audio)
+
+        if len(transcriptions) == 0:
+            transcriptions.append('<pad>')  # crutch for wer metric.
+
+        return MixedExample(
+            audio=audio,
+            noise_id=self.noise2id[background_noise_cls],
+            diarization=diarization,
+            transcription=' '.join(transcriptions)
+        )
+
+    def add_noise_to_audio(self, audio: torch.Tensor) -> str:
+        total_length = len(audio)
+
         background_noise_cls = np.random.choice(list(self.noise2id.keys()))
         noise_row_id = int(np.random.choice(self.noise2audio[background_noise_cls]))
         background_noise_audio = self.noises[noise_row_id]['audio']['array']
@@ -132,15 +147,7 @@ class DatasetMixer:
 
         audio += background_noise_audio * calculate_adjustment_coef(audio, background_noise_audio, snr)
 
-        if len(transcriptions) == 0:
-            transcriptions.append('<pad>')  # crutch for wer metric.
-
-        return MixedExample(
-            audio=audio,
-            noise_id=self.noise2id[background_noise_cls],
-            diarization=diarization,
-            transcription=' '.join(transcriptions)
-        )
+        return background_noise_cls
 
     def generate_no_overlap(self, audio: torch.Tensor, diarization: torch.Tensor, transcriptions: List,
                             speakers: np.array) -> None:
@@ -211,7 +218,7 @@ class DatasetMixer:
                 loaded_audio) // self.frame_resolution, speaker_index] = 1
             audio[filled_length: filled_length + len(loaded_audio)] += loaded_audio
 
-            transcriptions.append((filled_length, self.utterances[utterance_id]['transcription']))
+            transcriptions.append((filled_length, self.utterances[utterance_id]['transcription'], speaker))
             filled_length += len(utterance_audio)
 
             # add blanks.
@@ -227,16 +234,16 @@ class DatasetMixer:
         return [x[1] for x in sorted(transcriptions, key=lambda x: x[0])]
 
 
-class DatasetMixerWrapped(DatasetMixer, torch.utils.data.Dataset):
+class DatasetMixerWrapper(torch.utils.data.Dataset):
     """
     Wrapper for torch.utils.dataDataset.
     """
-
-    def __init__(self, config: DatasetMixerConfig, utterances, noises, rirs=None):
-        super(DatasetMixerWrapped, self).__init__(config, utterances, noises, rirs)
+    def __init__(self, mixer: DatasetMixer):
+        super().__init__()
+        self.mixer = mixer
 
     def __getitem__(self, idx):
-        return self.generate()
+        return self.mixer.generate()
 
     def __len__(self):
-        return self.config.utterances_count
+        return self.mixer.config.utterances_count

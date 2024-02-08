@@ -1,6 +1,10 @@
 from dataclasses import dataclass
+
 from transformers import WhisperProcessor, Wav2Vec2Processor
 import torch
+from transformers import PreTrainedTokenizerFast, WhisperFeatureExtractor
+from .SpeakerAttributedMixer import SpeakerAttributeExample
+from typing import List
 
 
 @dataclass
@@ -49,3 +53,29 @@ class TandemCollator:
         batch['classification_labels'] = clf_labels
 
         return batch
+
+
+@dataclass
+class SpeakerAttributionCollator:
+    tokenizer: PreTrainedTokenizerFast
+    feature_extractor: WhisperFeatureExtractor
+    inventory: torch.Tensor
+
+    def __call__(self, batch: List[SpeakerAttributeExample]):
+        ret = {}
+        ret['target_asr_ids'] = self.tokenizer([sample.transcription for sample in batch], return_tensors='pt',
+                                               padding='max_length', max_length=256, truncation=True)['input_ids']
+
+        ret['target_diar_ids'] = torch.stack(
+            [torch.cat([sample.speaker_attributions, torch.empty(256 - len(sample.speaker_attributions), dtype=torch.long).fill_(-100)])
+             for sample in batch])
+
+        features = [self.feature_extractor(sample.audio, sampling_rate=16_000, return_tensors='pt').input_features[0]
+                    for sample in batch]
+        features = self.feature_extractor.pad([{"input_features": feature} for feature in features],
+                                              return_tensors='pt').input_features
+
+        ret['input_features'] = features
+        ret['speaker_inventory'] = self.inventory.unsqueeze(0).repeat(len(batch), 1, 1)
+
+        return ret
