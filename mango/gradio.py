@@ -14,11 +14,13 @@ login(token=os.getenv('HF_TOKEN', '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'))
 transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='anakib1/whisper-asr-0.1',
                                                               processor_checkpoint='anakib1/whisper-asr-0.1',
                                                               language='uk'))
+
 diarizer = EENDDiarizer(EENDConfig(hf_api_model_path='anakib1/eend-sa',
                                    run_id='run-24-02-06.20-17',
                                    hf_api_model_name='model.pt',
                                    hf_api_processor_path='openai/whisper-small',
                                    max_num_speakers=3))
+
 classifier = WhisperClassifier(WhisperClassifierConfig(whisper_checkpoint='anakib1/whisper-tiny-urban',
                                                        processor_checkpoint='openai/whisper-tiny'))
 

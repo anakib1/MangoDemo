@@ -3,6 +3,7 @@ from torch import nn
 from ..utils.diarization import batch_pit_loss
 from dataclasses import dataclass
 from typing import Dict
+from transformers.models.whisper.modeling_whisper import WhisperEncoder
 
 
 @dataclass
@@ -51,3 +52,35 @@ class MangoEEND(nn.Module):
             loss, alignments = batch_pit_loss(labels, logits, self.config.num_speakers)
 
         return {'logits': logits, 'loss': loss, 'alignments': alignments}
+
+
+@dataclass
+class WhisperBasedEENDConfig:
+    num_speakers: int = 2
+    whisper_checkpoint: str = 'openai/whisper-small'
+    classifier_dim = 512
+
+
+class WhisperBasedEEND(nn.Module):
+
+    def __init__(self, config: WhisperBasedEENDConfig):
+        """
+        Instantiates a WhusperBasedEEND model with a given config
+        :param config:
+        """
+        super().__init__()
+        self.config = config
+        self.whisper = WhisperEncoder.from_pretrained(config.whisper_checkpoint)
+        self.classifier = nn.Sequential(nn.Linear(self.whisper.config.d_model, self.config.classifier_dim), nn.ReLU(),
+                                        nn.Linear(config.classifier_dim, self.config.num_speakers))
+
+    def forward(self, input_features: torch.Tensor, labels: torch.Tensor) -> Dict[str, torch.Tensor]:
+        features = self.whisper(input_features)
+        logits = self.classifier(features)
+
+        loss, alignments = None, None
+        if labels is not None:
+            loss, alignments = batch_pit_loss(labels, logits, self.config.num_speakers)
+
+        return {'logits': logits, 'loss': loss, 'alignments': alignments}
+
