@@ -75,7 +75,7 @@ class WhisperBasedEEND(nn.Module):
                                         nn.Linear(config.classifier_dim, self.config.num_speakers))
 
     def forward(self, input_features: torch.Tensor, labels: torch.Tensor) -> Dict[str, torch.Tensor]:
-        features = self.whisper(input_features)
+        features = self.whisper(input_features).last_hidden_state
         logits = self.classifier(features)
 
         loss, alignments = None, None
