@@ -4,6 +4,7 @@ from transformers import WhisperProcessor, Wav2Vec2Processor
 import torch
 from transformers import PreTrainedTokenizerFast, WhisperFeatureExtractor
 from .SpeakerAttributedMixer import SpeakerAttributeExample
+from .DatasetMixer import MixedExample
 from typing import List
 
 
@@ -11,7 +12,7 @@ from typing import List
 class DiarizationOnlyCollator:
     processor: WhisperProcessor
 
-    def __call__(self, batch):
+    def __call__(self, batch: List[MixedExample]):
         features = [self.processor(sample.audio, sampling_rate=16_000, return_tensors='pt').input_features[0] for sample
                     in batch]
         ret = self.processor.feature_extractor.pad([{"input_features": feature} for feature in features],
@@ -28,7 +29,7 @@ class DiarizationOnlyCollator:
 class TandemCollator:
     processor: Wav2Vec2Processor
 
-    def __call__(self, batch):
+    def __call__(self, batch: List[MixedExample]):
         max_length = 360_000
         text_max_length = 350
         max_diarization_length = max_length // 320
@@ -82,4 +83,19 @@ class SpeakerAttributionCollator:
         ret['input_features'] = features
         ret['speaker_inventory'] = self.inventory.unsqueeze(0).repeat(len(batch), 1, 1)
 
+        return ret
+
+
+@dataclass
+class ClassificationCollator:
+    processor: WhisperProcessor
+
+    def __call__(self, batch: List[MixedExample]):
+        features = [self.processor(sample.audio, sampling_rate=16_000, return_tensors='pt').input_features[0] for sample
+                    in batch]
+        ret = self.processor.feature_extractor.pad([{"input_features": feature} for feature in features],
+                                                   return_tensors='pt')
+
+        labels = torch.tensor([sample.noise_id for sample in batch], dtype=torch.long)
+        ret['labels'] = labels
         return ret
