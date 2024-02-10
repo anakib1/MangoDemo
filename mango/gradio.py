@@ -1,6 +1,6 @@
 import traceback
 from .classification import DummyClassifier, BaseClassifierConfig, WhisperClassifierConfig, \
-    WhisperClassifier
+    WhisperClassifier, WhisperClassifierEx, WhisperClassifierExConfig
 from .utils.diarization import draw_diarization
 from .diarization import DummyDiarizer, DiarizationConfig, WhisperBasedDiarizationConfig, WhisperDiarizer, \
     EENDConfig, EENDDiarizer
@@ -10,19 +10,25 @@ import os
 from huggingface_hub import login
 
 login(token=os.getenv('HF_TOKEN', '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'))
-
-transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='anakib1/whisper-asr-0.1',
-                                                              processor_checkpoint='anakib1/whisper-asr-0.1',
+transcriptor = WhisperTranscriptor(WhisperTranscriptionConfig(whisper_checkpoint='Yehor/whisper-small-ukrainian',
+                                                              processor_checkpoint='Yehor/whisper-small-ukrainian',
                                                               language='uk'))
-
 diarizer = EENDDiarizer(EENDConfig(hf_api_model_path='anakib1/eend-sa',
                                    run_id='run-24-02-06.20-17',
                                    hf_api_model_name='model.pt',
                                    hf_api_processor_path='openai/whisper-small',
                                    max_num_speakers=3))
 
-classifier = WhisperClassifier(WhisperClassifierConfig(whisper_checkpoint='anakib1/whisper-tiny-urban',
-                                                       processor_checkpoint='openai/whisper-tiny'))
+classifier = WhisperClassifierEx(WhisperClassifierExConfig(id2label={0: 'dog_bark',
+                                                                     1: 'children_playing',
+                                                                     2: 'car_horn',
+                                                                     3: 'air_conditioner',
+                                                                     4: 'street_music',
+                                                                     5: 'gun_shot',
+                                                                     6: 'siren',
+                                                                     7: 'engine_idling',
+                                                                     8: 'jackhammer',
+                                                                     9: 'drilling'}))
 
 
 def describe_audio(mic=None, file=None):

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import torch
 import torchaudio
-from transformers import WhisperForConditionalGeneration, WhisperProcessor
+from transformers import WhisperForConditionalGeneration, WhisperProcessor, WhisperTokenizerFast
 
 
 class BaseTranscriptor(object):
@@ -26,17 +26,20 @@ class WhisperTranscriptionConfig:
 class WhisperTranscriptor(BaseTranscriptor):
     def __init__(self, config: WhisperTranscriptionConfig):
         self.config = config
-        self.whisper = WhisperForConditionalGeneration.from_pretrained(config.whisper_checkpoint)
+        self.whisper = WhisperForConditionalGeneration.from_pretrained(config.whisper_checkpoint, device_map='auto',
+                                                                       torch_dtype=torch.float16)
         self.whisper.eval()
         self.processor = WhisperProcessor.from_pretrained(config.processor_checkpoint)
+        self.processor.tokenizer = WhisperTokenizerFast.from_pretrained(config.processor_checkpoint)
         self.processor.tokenizer.language = self.config.language
 
     def transcribe(self, waveform: np.ndarray, sr: int = 16_000) -> str:
         waveform = torchaudio.transforms.Resample(sr, 16_000)(torch.tensor(waveform, dtype=torch.float))
         features = self.processor(waveform, return_tensors='pt', sampling_rate=16_000)
-        features = features.to(self.whisper.device)
+        features = features.to(self.whisper.device).half()
+        forced_decoder_ids = self.processor.get_decoder_prompt_ids(language="uk", task="transcribe")
 
-        generated_ids = self.whisper.generate(**features, language=self.config.language)
+        generated_ids = self.whisper.generate(**features, forced_decoder_ids=forced_decoder_ids)
         decoded_sequence = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
         return decoded_sequence

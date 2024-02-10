@@ -6,7 +6,7 @@ from transformers.models.whisper.modeling_whisper import WhisperEncoder
 
 
 @dataclass
-class ClassifierConfig:
+class InternalClassifierConfig:
     num_labels: int = 10
     d_model: int = 256
     n_heads: int = 4
@@ -19,7 +19,7 @@ class EncoderClassifier(nn.Module):
     Model implements kind of EENND-SA.
     """
 
-    def __init__(self, config: ClassifierConfig):
+    def __init__(self, config: InternalClassifierConfig):
         """
         Instantiates a MangoDiarization model with a given config
         :param config: model configuration
