@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from torch import nn
 import torch
 from typing import Dict
+from transformers.models.whisper.modeling_whisper import WhisperEncoder
 
 
 @dataclass
@@ -41,7 +42,39 @@ class EncoderClassifier(nn.Module):
         features = self.transformer(features).permute(1, 0, 2).mean(dim=1)
         logits = self.classifier(features)
 
-        loss, alignments = None, None
+        loss = None
+        if labels is not None:
+            loss = self.loss(logits, labels)
+
+        return {'logits': logits, 'loss': loss, 'labels': labels}
+
+
+@dataclass
+class WhisperBasedCLFConfig:
+    num_labels: int = 10
+    whisper_checkpoint: str = 'openai/whisper-tiny'
+    classifier_dim = 512
+
+
+class WhisperBasedClassifier(nn.Module):
+
+    def __init__(self, config: WhisperBasedCLFConfig):
+        """
+        Instantiates a WhusperBasedClassifier model with a given config
+        :param config:
+        """
+        super().__init__()
+        self.config = config
+        self.whisper = WhisperEncoder.from_pretrained(config.whisper_checkpoint)
+        self.classifier = nn.Sequential(nn.Linear(self.whisper.config.d_model, self.config.classifier_dim), nn.ReLU(),
+                                        nn.Linear(config.classifier_dim, self.config.num_labels))
+        self.loss = nn.CrossEntropyLoss()
+
+    def forward(self, input_features: torch.Tensor, labels: torch.Tensor) -> Dict[str, torch.Tensor]:
+        features = self.whisper(input_features).last_hidden_state.mean(dim=1)
+        logits = self.classifier(features)
+
+        loss = None
         if labels is not None:
             loss = self.loss(logits, labels)
 
