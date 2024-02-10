@@ -39,6 +39,6 @@ class WhisperTranscriptor(BaseTranscriptor):
         forced_decoder_ids = self.processor.get_decoder_prompt_ids(language="uk", task="transcribe")
 
         generated_ids = self.whisper.generate(**features, forced_decoder_ids=forced_decoder_ids)
-        decoded_sequence = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        decoded_sequence = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
 
         return decoded_sequence
