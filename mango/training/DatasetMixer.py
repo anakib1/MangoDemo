@@ -5,13 +5,15 @@ import numpy as np
 import torch
 import datasets
 from datasets import Audio
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 
 
 @dataclass
 class DatasetMixerConfig:
     min_speakers: int = 1
     max_speakers: int = 2
+    min_noises: int = 1
+    max_noises: int = 5
     max_utterance_length: float = 30
     no_overlap: bool = False
     utterances_count: int = None
@@ -25,7 +27,7 @@ class DatasetMixerConfig:
 @dataclass
 class MixedExample:
     audio: torch.Tensor
-    noise_id: int
+    noise_id: Union[int, list]
     diarization: torch.Tensor
     transcription: str
     # todo maybe add some mappings?
@@ -131,10 +133,10 @@ class DatasetMixer:
             transcription=' '.join(transcriptions)
         )
 
-    def add_noise_to_audio(self, audio: torch.Tensor) -> str:
+    def add_noise_to_audio(self, audio: torch.Tensor, background_noise_cls=None) -> str:
         total_length = len(audio)
-
-        background_noise_cls = np.random.choice(list(self.noise2id.keys()))
+        if background_noise_cls is None:
+            background_noise_cls = np.random.choice(list(self.noise2id.keys()))
         noise_row_id = int(np.random.choice(self.noise2audio[background_noise_cls]))
         background_noise_audio = self.noises[noise_row_id]['audio']['array']
         snr = np.random.choice(self.snrs)
