@@ -99,3 +99,28 @@ class ClassificationCollator:
         labels = torch.tensor([sample.noise_id for sample in batch], dtype=torch.long)
         ret['labels'] = labels
         return ret
+
+
+@dataclass
+class WhisperUrbanCollator:
+    processor: WhisperProcessor = None
+    device: str = "cuda"
+
+    def __call__(self, data_list: list[SpeakerAttributeExample]):
+        """
+        :param data_list: list of SpeakerAttributeExample
+        :return: dict(input=processed audio features, labels=torch tensor with labeled noise classes)
+        """
+        batch_size = len(data_list)
+        labels = torch.zeros(batch_size, 10)
+        for i, exm in enumerate(data_list):
+            labels[i][exm.noise_id] = 1.0
+        features = [
+            self.processor.feature_extractor(exm.audio, sampling_rate=16000, return_tensors="pt")["input_features"][0]
+            for exm in data_list]
+        features = torch.stack(features, dim=0)
+        return {
+            "input": features,
+            "labels": labels,
+            "attention_mask": torch.ones((batch_size, features.shape[2]))
+        }
