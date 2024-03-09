@@ -41,14 +41,21 @@ class SpeakerAttributedMixer(DatasetMixer):
             self.generate_overlap(audio, diarization, transcriptions, speakers)
         transcriptions, speaker_attributions = self.process_transcriptions(transcriptions)
 
-        background_noise_cls = self.add_noise_to_audio(audio)
+        sample_num_noises = np.random.randint(self.config.min_noises, self.config.max_noises + 1)
+        noise_ids = []
+        arr = list(self.noise2id.keys())
+        for i in range(sample_num_noises):
+            noise_label = np.random.choice(arr)
+            noise_ids.append(self.noise2id[noise_label])
+            arr.remove(noise_label)
+            self.add_noise_to_audio(audio, background_noise_cls=noise_label)
 
         if len(transcriptions) == 0:
             transcriptions.append('<pad>')  # crutch for wer metric.
 
         return SpeakerAttributeExample(
             audio=audio,
-            noise_id=self.noise2id[background_noise_cls],
+            noise_id=noise_ids,
             diarization=diarization,
             transcription=' '.join(transcriptions),
             speaker_attributions=torch.tensor(speaker_attributions, dtype=torch.long)

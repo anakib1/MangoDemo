@@ -66,7 +66,8 @@ class MangoTrainer:
         self.config = config
         self.model = model
         self.hparams = {}
-        self.hparams.update(asdict(self.model.config))
+        if "config" in dir(self.model):
+            self.hparams.update(asdict(self.model.config))
         self.train_loader = train_loader
         self.eval_loader = eval_loader
         self.project_dir = pathlib.Path('output').joinpath(self.config.model_name)
