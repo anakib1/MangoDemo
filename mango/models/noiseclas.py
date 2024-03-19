@@ -107,7 +107,7 @@ class ClassificationMulticlassAccuracy:
         labels = train_output.model_outputs["labels"].int()
         result = preds == labels
         accuracy = result.int().sum() / torch.numel(result)
-        return {"accuracy": accuracy.cpu().numpy()}
+        return {"accuracy": float(accuracy.cpu().numpy())}
 
 
 class ClassificationAccuracy:
