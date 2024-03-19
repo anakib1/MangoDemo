@@ -35,7 +35,7 @@ class BaseClassifier(object):
 
 class DummyClassifier(BaseClassifier):
 
-    def classify(self, waveform: np.ndarray, sr: int = 16_000) -> dict:
+    def classify(self, waveform: np.array, sr: int = 16_000) -> dict:
         ret = np.abs(np.random.randn(len(self.config.id2label)))
         ret = ret / ret.sum()
         return {self.config.id2label.get(x, 'unknown'): ret[x] for x in range(len(ret))}
