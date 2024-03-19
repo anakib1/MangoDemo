@@ -6,6 +6,8 @@ from transformers import PreTrainedTokenizerFast, WhisperFeatureExtractor
 from .SpeakerAttributedMixer import SpeakerAttributeExample
 from .DatasetMixer import MixedExample
 from typing import List
+from torch.nn.functional import one_hot
+from audiomentations import Compose
 
 
 @dataclass
@@ -123,4 +125,33 @@ class WhisperUrbanCollator:
             "input": features,
             "labels": labels,
             "attention_mask": torch.ones((batch_size, features.shape[2]))
+        }
+
+
+@dataclass
+class SynthDataCollator:
+    augment: Compose
+    processor: WhisperProcessor
+    num_classes: int
+    device: str = "cpu"
+    class_mapper: dict = None
+
+    def __call__(self, data: list[dict]) -> dict:
+        if self.class_mapper is None:
+            self.class_mapper = dict()
+        for exm in data:
+            if exm["theme"] not in self.class_mapper:
+                self.class_mapper[exm["theme"]] = len(self.class_mapper.keys())
+        augmented_audios = [self.augment(exm["audio"]["array"], 16000) for exm in data]
+        features = [
+            self.processor.feature_extractor(exm, sampling_rate=16000, return_tensors="pt")["input_features"][0]
+            for exm in augmented_audios
+        ]
+        features = torch.stack(features, dim=0)
+        labels = torch.tensor([self.class_mapper[exm["theme"]] for exm in data])
+        labels = one_hot(labels, num_classes=self.num_classes).float()
+        return {
+            "input": features,
+            "labels": labels,
+            "attention_mask": torch.ones((len(data), features.shape[2]))
         }
