@@ -110,8 +110,8 @@ class ClassificationMulticlassAccuracy:
         accuracy = result.int().sum() / torch.numel(result)
 
         return {"accuracy": float(accuracy.cpu().numpy()),
-                "f1_macro": float(f1_score(y_true=labels, y_pred=preds, average='macro')),
-                "f1_micro": float(f1_score(y_true=labels, y_pred=preds, average='micro'))}
+                "f1_macro": float(f1_score(y_true=labels.cpu(), y_pred=preds.cpu(), average='macro')),
+                "f1_micro": float(f1_score(y_true=labels.cpu(), y_pred=preds.cpu(), average='micro'))}
 
 
 class ClassificationAccuracy:
