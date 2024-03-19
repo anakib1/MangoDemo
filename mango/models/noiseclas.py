@@ -3,6 +3,7 @@ from transformers import WhisperModel
 from abc import ABC, abstractmethod
 from ..training.MangoTrainer import TrainingOutput
 from dataclasses import dataclass
+from sklearn.metrics import f1_score
 
 
 class Embedder(torch.nn.Module, ABC):
@@ -107,7 +108,10 @@ class ClassificationMulticlassAccuracy:
         labels = train_output.model_outputs["labels"].int()
         result = preds == labels
         accuracy = result.int().sum() / torch.numel(result)
-        return {"accuracy": float(accuracy.cpu().numpy())}
+
+        return {"accuracy": float(accuracy.cpu().numpy()),
+                "f1_macro": float(f1_score(y_true=labels, y_pred=preds, average='macro')),
+                "f1_micro": float(f1_score(y_true=labels, y_pred=preds, average='micro'))}
 
 
 class ClassificationAccuracy:
