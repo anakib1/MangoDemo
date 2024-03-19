@@ -98,13 +98,24 @@ class NoiseClassifier(torch.nn.Module):
 
 
 @dataclass
-class ClassificationAccuracy:
+class ClassificationMulticlassAccuracy:
     threshold: float = 0.5
 
     def __call__(self, train_output: TrainingOutput):
         preds = train_output.model_outputs["predictions"]
         preds = (preds > self.threshold).int()
         labels = train_output.model_outputs["labels"].int()
+        result = preds == labels
+        accuracy = result.int().sum() / torch.numel(result)
+        return {"accuracy": accuracy.cpu().numpy()}
+
+
+class ClassificationAccuracy:
+    def __call__(self, train_output: TrainingOutput):
+        preds = train_output.model_outputs["predictions"]
+        preds = torch.argmax(preds, dim=1)
+        labels = train_output.model_outputs["labels"].int()
+        labels = torch.argmax(labels, dim=1)
         result = preds == labels
         accuracy = result.int().sum() / torch.numel(result)
         return {"accuracy": accuracy.cpu().numpy()}
