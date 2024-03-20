@@ -3,7 +3,7 @@ import tensorflow as tf
 import torch.nn
 from pathlib import Path
 from huggingface_hub import HfApi
-
+from tensorboard.plugins.hparams import api as hp
 
 class BaseTrackerCallback:
     def init_run(self, run_name: str, hparams: Dict[str, Any]):
@@ -56,12 +56,16 @@ class HuggingfaceCallback(BaseTrackerCallback):
 class TensorboardTrackerCallback(BaseTrackerCallback):
     def __init__(self, runs_prefix: str = 'tb_logs'):
         self.runs_prefix = runs_prefix
-        self.writer = None
+        self.metrics_writer = None
 
-    def init_run(self, run_name: str, hparams: Dict[str]):
-        self.writer = tf.summary.create_file_writer(self.runs_prefix + '/' + run_name)
+    def init_run(self, run_name: str, hparams: Dict[str, Any] = None):
+        self.metrics_writer = tf.summary.create_file_writer(self.runs_prefix + '/' + run_name + '/metrics')
+        if hparams is None:
+            hparams = {}
+        with self.metrics_writer.as_default():
+            hp.hparams(hparams)
 
     def log_epoch(self, metrics: Dict[str, Any], epoch_id: int):
-        with self.writer.as_default():
+        with self.metrics_writer.as_default():
             for k, v in metrics.items():
                 tf.summary.scalar(k, v, epoch_id)
