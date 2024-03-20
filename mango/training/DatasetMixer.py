@@ -94,6 +94,7 @@ class DatasetMixer:
         self.noise2id = {}
         self.noise2audio = {}
         for i, noise_label in enumerate(self.noises['label']):
+            noise_label = int(noise_label)
             self.noise2audio.setdefault(noise_label, []).append(i)
             self.noise2id.setdefault(noise_label, len(self.noise2id))
         self.num_noises = len(self.noise2id)
