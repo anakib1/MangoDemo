@@ -1,9 +1,26 @@
-from typing import Dict, Any
+from typing import Dict, Any, Union
+
+import numpy as np
 import tensorflow as tf
 import torch.nn
 from pathlib import Path
 from huggingface_hub import HfApi
 from tensorboard.plugins.hparams import api as hp
+
+
+def try_float(obj) -> Union[float, None]:
+    try:
+        return float(obj)
+    except (ValueError, TypeError):
+        return None
+
+
+def try_arr(obj) -> Union[np.array, None]:
+    try:
+        return np.array(obj)
+    except Exception:
+        return None
+
 
 class BaseTrackerCallback:
     def init_run(self, run_name: str, hparams: Dict[str, Any]):
@@ -59,7 +76,7 @@ class TensorboardTrackerCallback(BaseTrackerCallback):
         self.metrics_writer = None
 
     def init_run(self, run_name: str, hparams: Dict[str, Any] = None):
-        self.metrics_writer = tf.summary.create_file_writer(self.runs_prefix + '/' + run_name + '/metrics')
+        self.metrics_writer = tf.summary.create_file_writer(self.runs_prefix + '/' + run_name)
         if hparams is None:
             hparams = {}
         with self.metrics_writer.as_default():
@@ -68,4 +85,15 @@ class TensorboardTrackerCallback(BaseTrackerCallback):
     def log_epoch(self, metrics: Dict[str, Any], epoch_id: int):
         with self.metrics_writer.as_default():
             for k, v in metrics.items():
-                tf.summary.scalar(k, v, epoch_id)
+                v_float = try_float(v)
+                if v_float is not None:
+                    tf.summary.scalar(k, v_float, epoch_id)
+                else:
+                    arr = try_arr(v)
+                    if arr is not None:
+                        if len(arr.shape) == 4:  # image maybe
+                            tf.summary.image(k, arr, step=epoch_id, max_outputs=10)
+                        else:
+                            tf.summary.text(k, str(arr), step=epoch_id)
+                    else:
+                        tf.summary.text(k, str(v), step=epoch_id)

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from ..training.MangoTrainer import TrainingOutput
 from dataclasses import dataclass
 from sklearn.metrics import f1_score
+from ..utils.multilabel import render_confusion_matrix
 
 
 class Embedder(torch.nn.Module, ABC):
@@ -59,7 +60,8 @@ class NoiseLinearHead(torch.nn.Module):
         :params *: see the output of Embedder
         :return: tensor with sigmoids for classes (B x NUM_CL)
         """
-        lengths = torch.tensor([attention_mask[i].sum() for i in range(attention_mask.shape[0])]).to(embedder_output.device)
+        lengths = torch.tensor([attention_mask[i].sum() for i in range(attention_mask.shape[0])]).to(
+            embedder_output.device)
         mask = torch.stack([attention_mask for _ in range(embedder_output.shape[-1])], dim=2)
         output = mask * embedder_output
         output = torch.sum(output, dim=1)
@@ -109,9 +111,12 @@ class ClassificationMulticlassAccuracy:
         result = preds == labels
         accuracy = result.int().sum() / torch.numel(result)
 
+        confusion_images = render_confusion_matrix(labels.cpu(), preds.cpu())
+
         return {"accuracy": float(accuracy.cpu().numpy()),
                 "f1_macro": float(f1_score(y_true=labels.cpu(), y_pred=preds.cpu(), average='macro')),
-                "f1_micro": float(f1_score(y_true=labels.cpu(), y_pred=preds.cpu(), average='micro'))}
+                "f1_micro": float(f1_score(y_true=labels.cpu(), y_pred=preds.cpu(), average='micro')),
+                "confusion_matrix": confusion_images}
 
 
 class ClassificationAccuracy:
