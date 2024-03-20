@@ -180,7 +180,7 @@ class MangoTrainer:
         iteration_class = 'eval' if isinstance(outputs, EvalOutput) else 'train'
         results.update({'loss': np.mean(outputs.losses)})
         results.update({'lr': self.scheduler.get_last_lr()[0]})
-        results = {f'{k}/{iteration_class}': v for k, v in results}
+        results = {f'{k}/{iteration_class}': v for k, v in results.items()}
 
         for tracker in self.trackers:
             try:
