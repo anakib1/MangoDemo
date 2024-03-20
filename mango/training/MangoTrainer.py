@@ -8,8 +8,8 @@ from typing import List, Any, Dict, Union
 import logging
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
-from huggingface_hub import HfApi
 from datetime import datetime
+from .trackers import BaseTrackerCallback
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,6 @@ class EvalOutput(TrainingOutput):
 class TrainerConfig:
     model_name: str = None
     concatenate_batches: bool = True
-    use_tensorboard: bool = True
     logs_frequency_batches: int = 1
     save_strategy: str = 'end'
     push_to_hub: bool = True
@@ -49,7 +48,8 @@ class TrainerConfig:
 
 class MangoTrainer:
     def __init__(self, model: torch.nn.Module, train_loader: DataLoader,
-                 eval_loader: DataLoader, config: TrainerConfig, accelerator=None, optimizer=None, scheduler=None):
+                 eval_loader: DataLoader, config: TrainerConfig, accelerator=None, optimizer=None, scheduler=None,
+                 trackers: List[BaseTrackerCallback] | None = None):
         """
         Instantiates a MangoTrainer instance
         :param model: model to train. could any nn.Module that returns dict with 'loss' key.
@@ -71,6 +71,9 @@ class MangoTrainer:
         self.train_loader = train_loader
         self.eval_loader = eval_loader
         self.project_dir = pathlib.Path('output').joinpath(self.config.model_name)
+        if trackers is None:
+            trackers = []
+        self.trackers = trackers
         if accelerator is None:
             plugin = accelerate.utils.GradientAccumulationPlugin(num_steps=self.config.gradient_accumulation_steps,
                                                                  sync_with_dataloader=False)
@@ -93,7 +96,6 @@ class MangoTrainer:
             self.scheduler,
             self.train_loader,
             self.eval_loader)
-        self.api = HfApi()
         self.global_train_step = 0
         self.global_eval_step = 0
 
@@ -113,14 +115,15 @@ class MangoTrainer:
         if compute_metrics is None:
             compute_metrics = lambda output: {}
 
-        if self.config.use_tensorboard and self.accelerator.is_main_process:
+        if self.accelerator.is_main_process:
             run_name = f'runs/run-{datetime.now().strftime("%y-%m-%d.%H-%M")}'
-            self.run_dir = self.project_dir.joinpath(run_name)
             hps = {"num_steps": num_epochs * len(self.train_loader),
                    "learning_rate": self.config.lr,
                    "weight_decay": self.config.weight_decay}
             hps.update(self.hparams)
-            self.accelerator.init_trackers(run_name, config=hps)
+            for logger_callback in self.trackers:
+                logger_callback.init_run(run_name, hps)
+            self.run_dir = self.project_dir.joinpath(run_name)
 
         train_losses = []
 
@@ -131,7 +134,9 @@ class MangoTrainer:
 
             train_losses.append(np.mean(train_outputs.losses))
             if self.config.early_stopping_patience is not None:
-                if len(train_losses) > self.config.early_stopping_patience and np.min(train_losses[:-self.config.early_stopping_patience]) < np.min(train_losses[-self.config.early_stopping_patience:]):
+                if len(train_losses) > self.config.early_stopping_patience and np.min(
+                        train_losses[:-self.config.early_stopping_patience]) < \
+                        np.min(train_losses[-self.config.early_stopping_patience:]):
                     logger.info(f"Stopping training at epoch {epoch}. Early stopping criterion reached")
                     self.accelerator.set_trigger()
 
@@ -149,7 +154,7 @@ class MangoTrainer:
             self.log_results(metrics, val_outputs)
 
             if self.config.save_strategy == 'epoch':
-                self.save_model()
+                self.save_model(epoch)
 
             logger.info(f'Epoch {epoch} passed')
 
@@ -157,43 +162,34 @@ class MangoTrainer:
                 break
 
         if self.config.save_strategy == 'end':
-            self.save_model()
+            self.save_model(num_epochs - 1)
 
         self.accelerator.end_training()
 
-    def save_model(self):
+    def save_model(self, epoch_id: int):
         if not self.accelerator.is_main_process:
             return
-        try:
-            pathlib.Path(self.run_dir).mkdir(parents=True, exist_ok=True)
-            unwrapped_model = self.accelerator.unwrap_model(self.model)
-            torch.save(unwrapped_model.state_dict(), f'{self.run_dir}/model.pt')
-
-            if self.config.push_to_hub:
-                repo_id = f'{self.config.hf_user}/{self.config.model_name}'
-                if not self.api.repo_exists(repo_id):
-                    self.api.create_repo(repo_id, repo_type='model')
-                self.api.upload_folder(
-                    folder_path=f'{self.project_dir}',
-                    repo_id=repo_id,
-                    repo_type="model"
-                )
-        except Exception as ex:
-            logger.error(f'Saving model failed. Exception: {ex}')
+        unwrapped_model = self.accelerator.unwrap_model(self.model)
+        for tracker in self.trackers:
+            try:
+                tracker.save_model(unwrapped_model, epoch_id)
+            except Exception as ex:
+                logger.error(f'Tracker {tracker} failed to save model. Exception: {ex}')
 
     def log_results(self, results: Dict[str, float], outputs: Union[TrainingOutput, EvalOutput]) -> None:
         iteration_class = 'eval' if isinstance(outputs, EvalOutput) else 'train'
         results.update({'loss': np.mean(outputs.losses)})
-        try:
-            if self.config.use_tensorboard:
-                for k, v in results.items():
-                    self.accelerator.log({f'{k}/{iteration_class}': v}, outputs.epoch_id)
-                self.accelerator.log({f'lr/{iteration_class}': self.scheduler.get_last_lr()[0]}, outputs.epoch_id)
-        except Exception as ex:
-            logger.error(f"Logging failed. Exception: {ex}")
+        results.update({'lr': self.scheduler.get_last_lr()[0]})
+        results = {f'{k}/{iteration_class}': v for k, v in results}
 
-    def group_predictions(self, predictions: Dict[str, List[torch.Tensor]]) -> Union[
-        Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
+        for tracker in self.trackers:
+            try:
+                tracker.log_epoch(results, outputs.epoch_id)
+            except Exception as ex:
+                logger.error(f"Logging failed. Exception: {ex}")
+
+    def group_predictions(self, predictions: Dict[str, List[torch.Tensor]]) -> \
+            Union[Dict[str, List[torch.Tensor]], Dict[str, torch.Tensor]]:
         """
         Groups prediction to the tensors and not lists of tensor.
         :param predictions: dictionary of model outputs.
