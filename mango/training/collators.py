@@ -106,6 +106,7 @@ class ClassificationCollator:
 @dataclass
 class WhisperUrbanCollator:
     processor: WhisperProcessor = None
+    num_noises: int = 10
     device: str = "cuda"
 
     def __call__(self, data_list: list[SpeakerAttributeExample]):
@@ -114,7 +115,7 @@ class WhisperUrbanCollator:
         :return: dict(input=processed audio features, labels=torch tensor with labeled noise classes)
         """
         batch_size = len(data_list)
-        labels = torch.zeros(batch_size, 10)
+        labels = torch.zeros(batch_size, self.num_noises)
         for i, exm in enumerate(data_list):
             labels[i][exm.noise_id] = 1.0
         features = [
