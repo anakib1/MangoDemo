@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, List
 
 import PIL.Image
 import neptune
@@ -111,11 +111,13 @@ class TensorboardTracker(BaseTracker):
 
 
 class NeptuneTracker(BaseTracker):
-    def __init__(self, project_name: str, token: str, model_name: str):
+    def __init__(self, project_name: str, token: str, model_name: str, tags: List[str] = None):
+        if tags is None:
+            tags = []
         self.project_name = project_name
         self.token = token
         self.model_name = model_name
-        self.run = neptune.init_run(project=project_name, api_token=token, dependencies='infer')
+        self.run = neptune.init_run(project=project_name, api_token=token, dependencies='infer', tags=tags)
 
     def init_run(self, run_name: str, hparams: Dict[str, Any]):
         self.run['name'] = run_name
