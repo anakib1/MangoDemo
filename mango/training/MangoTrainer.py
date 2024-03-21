@@ -9,7 +9,7 @@ import logging
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 from datetime import datetime
-from .trackers import BaseTrackerCallback
+from .trackers import BaseTracker
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class TrainerConfig:
 class MangoTrainer:
     def __init__(self, model: torch.nn.Module, train_loader: DataLoader,
                  eval_loader: DataLoader, config: TrainerConfig, accelerator=None, optimizer=None, scheduler=None,
-                 trackers: List[BaseTrackerCallback] | None = None):
+                 trackers: List[BaseTracker] | None = None):
         """
         Instantiates a MangoTrainer instance
         :param model: model to train. could any nn.Module that returns dict with 'loss' key.
