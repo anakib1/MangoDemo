@@ -13,7 +13,7 @@ def render_confusion_matrix(y_true: np.array, y_pred: np.array) -> List[np.array
     :return: list of (H, W, 4) images - confusion matrix per class
     """
 
-    conf = multilabel_confusion_matrix(np.random.randint(0, 2, (16, 10)), np.random.randint(0, 2, (16, 10)))
+    conf = multilabel_confusion_matrix(y_true, y_pred)
     ret = []
     for matrix in conf:
         matrix = matrix / np.sum(matrix)
