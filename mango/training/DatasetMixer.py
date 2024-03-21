@@ -22,6 +22,7 @@ class DatasetMixerConfig:
     min_repetitions: int = 1
     max_repetitions: int = 3
     beta: float = 1
+    noise_sample_type: str = "whole"   # whole means place noise for the whole video, "random" - for a random segment
 
 
 @dataclass
@@ -46,6 +47,17 @@ def calculate_adjustment_coef(original_input: torch.Tensor, noise: torch.Tensor,
     scaling_factor = torch.sqrt(power_y / (10 ** (snr_dB / 10) * power_noise))
     return scaling_factor
 
+
+def expand_array(arr: np.array, length: int) -> np.array:
+    """
+    :param arr: given array
+    :param length: the length to expand given array
+    :return: the expanded array
+    """
+    num = length // arr.shape[0]
+    ans = np.tile(arr, num)
+    ans = np.concatenate([ans, arr[:length - num * arr.shape[0]]])
+    return ans
 
 class DatasetMixer:
     """
@@ -135,6 +147,11 @@ class DatasetMixer:
         )
 
     def add_noise_to_audio(self, audio: torch.Tensor, background_noise_cls=None) -> str:
+        """
+        :param audio: the audio where to add the noise
+        :param background_noise_cls: (optional) the noise class to add
+        :return: background_noise_cls (created if None)
+        """
         total_length = len(audio)
         if background_noise_cls is None:
             background_noise_cls = np.random.choice(list(self.noise2id.keys()))
@@ -143,7 +160,7 @@ class DatasetMixer:
         snr = np.random.choice(self.snrs)
 
         repeats = total_length // len(background_noise_audio)
-        background_noise_audio = background_noise_audio.repeat(repeats)
+        background_noise_audio = np.tile(background_noise_audio, repeats)
         background_noise_audio = torch.concatenate(
             (background_noise_audio, torch.zeros(total_length - len(background_noise_audio))),
             dim=0)
@@ -151,6 +168,36 @@ class DatasetMixer:
         audio += background_noise_audio * calculate_adjustment_coef(audio, background_noise_audio, snr)
 
         return background_noise_cls
+
+    def add_noise_random_place(self, audio: torch.Tensor, background_noise_cls=None) -> (int, (int, int)):
+        """
+        Adds noise to random place in the audio and returns the data about the noise that has been added
+        :param audio: audio
+        :param noise_mask: mask of shape (timestamps x num_classes + 1)
+        :param background_noise_cls: noise class to add
+        :return: (noise_id, (start_pos, length)) of the noise audio
+        """
+        total_length = len(audio)
+        if background_noise_cls is None:
+            background_noise_cls = np.random.choice(list(self.noise2id.keys()))
+        noise_row_id = int(np.random.choice(self.noise2audio[background_noise_cls]))
+        background_noise_audio = self.noises[noise_row_id]['audio']['array']
+        snr = np.random.choice(self.snrs)
+        noise_id = self.noise2id[background_noise_cls]
+
+        noise_length = int(total_length * 0.1 + np.random.beta(2, 5) * total_length * 0.9)
+        start_pos = np.random.randint(0, total_length - 1)
+        if start_pos + noise_length > total_length:
+            if start_pos + noise_length - total_length > total_length - start_pos:
+                noise_length = start_pos + noise_length - total_length
+                start_pos = 0
+            else:
+                noise_length = total_length - start_pos
+        background_noise_audio = torch.tensor(expand_array(background_noise_audio, noise_length))
+        background_noise_audio = torch.concatenate([torch.zeros(start_pos), background_noise_audio, torch.zeros(total_length - (start_pos + noise_length))])
+        audio += background_noise_audio * calculate_adjustment_coef(audio, background_noise_audio, snr)
+
+        return noise_id, (start_pos, noise_length)
 
     def generate_no_overlap(self, audio: torch.Tensor, diarization: torch.Tensor, transcriptions: List,
                             speakers: np.array) -> None:
@@ -194,7 +241,7 @@ class DatasetMixer:
         :param speaker_index: index of speaker in terms of the current example
         :param speaker: speaker name in terms of the whole mixer
         :param filled_length: start time to begin appending
-        :return: None
+        :return: filled_length
         """
         n_u = np.random.randint(self.config.min_repetitions, self.config.max_repetitions + 1)
         for u in range(n_u):

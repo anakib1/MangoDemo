@@ -48,7 +48,11 @@ class SpeakerAttributedMixer(DatasetMixer):
             noise_label = np.random.choice(arr)
             noise_ids.append(self.noise2id[noise_label])
             arr.remove(noise_label)
-            self.add_noise_to_audio(audio, background_noise_cls=noise_label)
+            assert self.config.noise_sample_type in ["whole", "random"]
+            if self.config.noise_sample_type == "whole":
+                self.add_noise_to_audio(audio, background_noise_cls=noise_label)
+            else:
+                self.add_noise_random_place(audio, background_noise_cls=noise_label)
 
         if len(transcriptions) == 0:
             transcriptions.append('<pad>')  # crutch for wer metric.
@@ -79,6 +83,4 @@ class SpeakerAttributedMixer(DatasetMixer):
             speaker_attributions.extend([self.speaker2id[speaker_id]] * (len(current_words) + 1))
 
         return words, speaker_attributions
-
-
 
