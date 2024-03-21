@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from tqdm.auto import tqdm
 
 import numpy as np
 import torch
@@ -241,6 +242,7 @@ class DatasetMixerWrapper(torch.utils.data.Dataset):
     """
     Wrapper for torch.utils.dataDataset.
     """
+
     def __init__(self, mixer: DatasetMixer):
         super().__init__()
         self.mixer = mixer
@@ -250,3 +252,14 @@ class DatasetMixerWrapper(torch.utils.data.Dataset):
 
     def __len__(self):
         return self.mixer.config.utterances_count
+
+
+class DeterministicDatasetWrapper(DatasetMixerWrapper):
+    def __init__(self, mixer: DatasetMixer):
+        super().__init__(mixer)
+        self.examples = []
+        for example in tqdm(range(len(self))):
+            self.examples.append(example)
+
+    def __getitem__(self, idx):
+        return self.examples[idx]
