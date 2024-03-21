@@ -52,7 +52,6 @@ class NoiseLinearHead(torch.nn.Module):
         """
         super().__init__()
         self.linear = torch.nn.Linear(emb_dim, num_cl)
-        self.class_prob_activation = torch.nn.Sigmoid() if multi_classes else torch.nn.Softmax(dim=1)
         self.multi_classes = multi_classes
 
     def forward(self, embedder_output: torch.Tensor, attention_mask: torch.Tensor):
@@ -67,7 +66,6 @@ class NoiseLinearHead(torch.nn.Module):
         output = torch.sum(output, dim=1)
         output /= torch.stack([lengths for _ in range(output.shape[1])], dim=1)
         output = self.linear(output)
-        output = self.class_prob_activation(output)
         return output
 
 
@@ -81,7 +79,7 @@ class NoiseClassifier(torch.nn.Module):
         super().__init__()
         self.embedder = embedder
         self.head = NoiseLinearHead(embedder.emb_dim, num_noises, multi_classes)
-        self.loss_fn = torch.nn.BCELoss() if multi_classes else torch.nn.CrossEntropyLoss()
+        self.loss_fn = torch.nn.BCEWithLogitsLoss() if multi_classes else torch.nn.CrossEntropyLoss()
 
     def forward(self, input: torch.Tensor, labels: torch.tensor, attention_mask: torch.Tensor):
         """
