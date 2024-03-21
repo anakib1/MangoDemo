@@ -160,7 +160,7 @@ class DatasetMixer:
         snr = np.random.choice(self.snrs)
 
         repeats = total_length // len(background_noise_audio)
-        background_noise_audio = np.tile(background_noise_audio, repeats)
+        background_noise_audio = torch.tensor(background_noise_audio).tile(repeats)
         background_noise_audio = torch.concatenate(
             (background_noise_audio, torch.zeros(total_length - len(background_noise_audio))),
             dim=0)
