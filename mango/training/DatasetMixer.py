@@ -258,8 +258,8 @@ class DeterministicDatasetWrapper(DatasetMixerWrapper):
     def __init__(self, mixer: DatasetMixer):
         super().__init__(mixer)
         self.examples = []
-        for example in tqdm(range(len(self))):
-            self.examples.append(example)
+        for _ in tqdm(range(len(self))):
+            self.examples.append(self.mixer.generate())
 
     def __getitem__(self, idx):
         return self.examples[idx]
