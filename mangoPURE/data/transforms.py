@@ -7,17 +7,17 @@ from .utils import expand_tensor, calc_audio_adjustment_coef
 
 class CreateRandomBlankAudio(MixerTransform):
     def __init__(
-        self,
-        min_secs: float = 10.0,
-        max_secs: float = 20.0,
-        rate: int = 16000,
+            self,
+            min_secs: float = 10.0,
+            max_secs: float = 20.0,
+            rate: int = 16000
     ):
         self.min_len = int(rate * min_secs)
         self.max_len = int(rate * max_secs)
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         It creates MixedExample with random one speaker audio
@@ -35,8 +35,8 @@ class CreateRandomSpeaker(MixerTransform):
         self.speaker_dataset = speaker_dataset
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         It creates MixedExample with random one speaker audio
@@ -58,8 +58,8 @@ class CreateRandomSpeaker(MixerTransform):
 
 class AddRandomSpeakerSegment(MixerTransform):
     def __init__(
-        self,
-        speaker_dataset: HfDataset,
+            self,
+            speaker_dataset: HfDataset,
     ):
         """
         :param speaker_dataset: the dataset of speaker audio
@@ -68,8 +68,8 @@ class AddRandomSpeakerSegment(MixerTransform):
         self.speaker_dataset = speaker_dataset
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         Adds a random speaker voice segment to the audio
@@ -111,18 +111,18 @@ class AddRandomSpeakerSegment(MixerTransform):
 
 class AddSeveralRandomSpeakerSegments(AddRandomSpeakerSegment):
     def __init__(
-        self,
-        speaker_dataset: HfDataset,
-        min_speakers: int = 2,
-        max_speakers: int = 4,
+            self,
+            speaker_dataset: HfDataset,
+            min_speakers: int = 2,
+            max_speakers: int = 4,
     ):
         super().__init__(speaker_dataset)
         self.min_speakers = min_speakers
         self.max_speakers = max_speakers
 
     def __call__(
-        self,
-        example: MixedExample
+            self,
+            example: MixedExample
     ) -> MixedExample:
         """
         The same as AddRandomSpeakerSegment, but it generates
@@ -136,10 +136,10 @@ class AddSeveralRandomSpeakerSegments(AddRandomSpeakerSegment):
 
 class AddRandomFilledNoise(MixerTransform):
     def __init__(
-        self,
-        noise_dataset: HfDataset,
-        snrs: tuple[float] = (10.0, 15.0, 20.0),
-        no_noise_coef: bool = True
+            self,
+            noise_dataset: HfDataset,
+            snrs: tuple[float] = (10.0, 15.0, 20.0),
+            no_noise_coef: bool = True
     ):
         """
         :param noise_dataset: the dataset of noises audio
@@ -152,8 +152,8 @@ class AddRandomFilledNoise(MixerTransform):
         self.no_noise_coef = no_noise_coef
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         It fills the audio with random noise from dataset
@@ -178,10 +178,10 @@ class AddRandomFilledNoise(MixerTransform):
 
 class AddRandomNoiseSegment(MixerTransform):
     def __init__(
-        self,
-        noises_dataset: HfDataset,
-        snrs: tuple[float] = (10.0, 15.0, 20.0),
-        no_noise_coef: bool = True
+            self,
+            noises_dataset: HfDataset,
+            snrs: tuple[float] = (10.0, 15.0, 20.0),
+            no_noise_coef: bool = True
     ):
         """
         :param noises_dataset: the dataset of noises audio
@@ -194,8 +194,8 @@ class AddRandomNoiseSegment(MixerTransform):
         self.no_noise_coef = no_noise_coef
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         Adds to the audio random noise from dataset at a random place
@@ -239,12 +239,12 @@ class AddRandomNoiseSegment(MixerTransform):
 
 class AddSeveralRandomNoiseSegments(AddRandomNoiseSegment):
     def __init__(
-        self,
-        noises_dataset: HfDataset,
-        snrs: tuple[float] = (10.0, 15.0, 20.0),
-        no_noise_coef: bool = True,
-        min_noises: int = 2,
-        max_noises: int = 4,
+            self,
+            noises_dataset: HfDataset,
+            snrs: tuple[float] = (10.0, 15.0, 20.0),
+            no_noise_coef: bool = True,
+            min_noises: int = 2,
+            max_noises: int = 4,
     ):
         """
         :param min_noises: min noises segments in audio
