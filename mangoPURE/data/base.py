@@ -1,10 +1,13 @@
-import torch
 from dataclasses import dataclass
-from datasets import Dataset as HfDataset
+
+import torch
 
 
 @dataclass
 class SegmentInfo:
+    """
+    Segments information are given in sampling resolution.
+    """
     start: int
     length: int
     class_id: int
@@ -12,6 +15,9 @@ class SegmentInfo:
 
 @dataclass
 class MixedExample:
+    """
+    Audio - 1D torch tensor in default (16_000) sampling rate
+    """
     audio: torch.Tensor = None
     speakers_info: list[SegmentInfo] = None
     noises_info: list[SegmentInfo] = None
@@ -19,8 +25,8 @@ class MixedExample:
 
 class MixerTransform:
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         The abstract function for transforming MixedExample
