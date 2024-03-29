@@ -7,21 +7,15 @@ from .base import MixedExample, SegmentInfo
 def calc_audio_adjustment_coef(
         original_input: torch.Tensor,
         noise: torch.Tensor,
-        snr_dB: Union[float, list[float], tuple[float]],
-        no_noise_coef: bool = False
+        snr_dB: float,
     ) -> float:
     """
     Calculates adjustment coefficient in order to add noise appropriately
     :param original_input: input audio 1d tensor
     :param noise: input noise 1d tensor
     :param snr_dB: aimed signal-to-noise ratio
-    :param no_noise_coef: returns 1.0 if this parameter is true
     :return: ratio to successfully add the noise
     """
-    if no_noise_coef:
-        return 1.0
-    if isinstance(snr_dB, Union[list, tuple]):
-        snr_dB = random.choice(snr_dB)
     power_y = torch.mean(torch.square(original_input))
     power_noise = torch.mean(torch.square(noise))
     scaling_factor = torch.sqrt(power_y / (10 ** (snr_dB / 10) * power_noise))
@@ -63,3 +57,57 @@ class Resize:
             for seg in mixed_example.noises_info:
                 Resize.resize_segment(seg, size, new_size)
         return mixed_example
+
+
+class Generate:
+
+    @staticmethod
+    def position_segment_in_audio(audio: torch.tensor, segment: torch.Tensor) -> (torch.Tensor, int):
+        """
+        :param audio: the base audio where we should insert the segment
+        :param segment: the segment to insert
+        :return: our segment (it may be truncated due to positioning at the end or at the start)
+            and start position of the segment
+        """
+        audio_len = audio.shape[0]
+        segment_len = segment.shape[0]
+
+        if segment_len > audio_len:
+            segment = segment[:audio_len]
+            segment_len = audio_len
+
+        pos_start = random.randint(0, audio_len - 1)
+        if pos_start + segment_len <= audio_len:
+            return segment, pos_start
+        else:
+            end_len = audio_len - pos_start
+            start_len = segment_len - end_len
+            if start_len > end_len:
+                return segment[-start_len:], 0
+            else:
+                return segment[:end_len], pos_start
+
+
+class Name2IdMapper:
+    """
+    This class handles conversion from names to integer ids
+    """
+    def __init__(self, start_id=1):
+        self.name2id = dict()
+        self.id2name = dict()
+        self.current_new_id = start_id
+
+    def get_name(self, id):
+        return self.id2name[id]
+
+    def get_id(self, name):
+        return self.name2id[name]
+
+    def add_name(self, name):
+        """
+        Adds name to mapper if the name does not exist
+        """
+        if name not in self.name2id:
+            self.name2id[name] = self.current_new_id
+            self.id2name[self.current_new_id] = name
+            self.current_new_id += 1
