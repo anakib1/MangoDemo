@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class CreateRandomBlankAudio(MixerTransform):
     def __init__(
-        self,
-        min_secs: float = 10.0,
-        max_secs: float = 20.0,
+            self,
+            min_secs: float = 10.0,
+            max_secs: float = 20.0,
     ):
         """
         parameters specify the target length of audio
@@ -24,8 +24,8 @@ class CreateRandomBlankAudio(MixerTransform):
         self.max_len = int(RATE * max_secs)
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         It creates MixedExample with random one speaker audio
@@ -44,14 +44,14 @@ class CreateRandomBlankAudio(MixerTransform):
 
 class CreateRandomSpeaker(MixerTransform):
     def __init__(
-        self,
-        audio_provider: AudioProvider
+            self,
+            audio_provider: AudioProvider
     ):
         self.audio_provider = audio_provider
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         It creates MixedExample with random one speaker audio
@@ -75,14 +75,14 @@ class CreateRandomSpeaker(MixerTransform):
 
 class AddRandomSpeakerSegment(MixerTransform):
     def __init__(
-        self,
-        audio_provider: AudioProvider
+            self,
+            audio_provider: AudioProvider
     ):
         self.audio_provider = audio_provider
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         Adds a random speaker voice segment to the audio
@@ -112,10 +112,10 @@ class AddRandomSpeakerSegment(MixerTransform):
 
 class AddSeveralRandomSpeakerSegments(AddRandomSpeakerSegment):
     def __init__(
-        self,
-        audio_provider: AudioProvider,
-        min_speakers: int = 2,
-        max_speakers: int = 4,
+            self,
+            audio_provider: AudioProvider,
+            min_speakers: int = 2,
+            max_speakers: int = 4,
     ):
         """
         parameters specify the range of speakers to generate
@@ -125,8 +125,8 @@ class AddSeveralRandomSpeakerSegments(AddRandomSpeakerSegment):
         self.max_speakers = max_speakers
 
     def __call__(
-        self,
-        example: MixedExample
+            self,
+            example: MixedExample
     ) -> MixedExample:
         """
         The same as AddRandomSpeakerSegment, but it generates
@@ -140,8 +140,8 @@ class AddSeveralRandomSpeakerSegments(AddRandomSpeakerSegment):
 
 class MergeAll(MixerTransform):
     def __call__(
-        self,
-        example: MixedExample
+            self,
+            example: MixedExample
     ) -> MixedExample:
         """
         Merges all data created by previous transforms into single audio
@@ -165,9 +165,9 @@ class MergeAll(MixerTransform):
 
 class AddRandomFilledNoise(MixerTransform):
     def __init__(
-        self,
-        audio_provider: AudioProvider,
-        snrs: List[float] = (10.0, 15.0, 20.0),
+            self,
+            audio_provider: AudioProvider,
+            snrs: List[float] = (10.0, 15.0, 20.0),
     ):
         """
         :param snrs: specifies range of snrs to apply to noise
@@ -177,8 +177,8 @@ class AddRandomFilledNoise(MixerTransform):
         self.snrs = snrs
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         It fills the audio with random noise from dataset
@@ -222,8 +222,8 @@ class AddRandomNoiseSegment(MixerTransform):
         self.snrs = snrs
 
     def __call__(
-        self,
-        example: MixedExample,
+            self,
+            example: MixedExample,
     ) -> MixedExample:
         """
         Adds to the audio random noise from dataset at a random place
@@ -253,11 +253,11 @@ class AddRandomNoiseSegment(MixerTransform):
 
 class AddSeveralRandomNoiseSegments(AddRandomNoiseSegment):
     def __init__(
-        self,
-        audio_provider: AudioProvider,
-        snrs: List[float] = (10.0, 15.0, 20.0),
-        min_noises: int = 2,
-        max_noises: int = 4,
+            self,
+            audio_provider: AudioProvider,
+            snrs: List[float] = (10.0, 15.0, 20.0),
+            min_noises: int = 2,
+            max_noises: int = 4,
     ):
         """
         additional parameters specify range of noises to generate

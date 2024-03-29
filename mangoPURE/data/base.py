@@ -5,9 +5,6 @@ import torch
 
 @dataclass
 class SegmentInfo:
-    """
-    Segments information are given in sampling resolution.
-    """
     start: int
     length: int
     class_id: int
