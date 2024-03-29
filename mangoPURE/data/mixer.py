@@ -3,8 +3,8 @@ from .base import MixerTransform, MixedExample
 
 class DatasetMixer:
     def __init__(
-        self,
-        transforms: list[MixerTransform],
+            self,
+            transforms: list[MixerTransform],
     ):
         """
         :param transforms: list of transforms to perform by each generate action
