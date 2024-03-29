@@ -155,10 +155,13 @@ class MergeAll(MixerTransform):
                 if segment.type == "speaker":
                     example.audio[segment.start:segment.start + segment.audio.shape[0]] += segment.audio
                     has_speaker = True
-            for segment in example._segments:
+            noise_coefs = dict()
+            for i, segment in enumerate(example._segments):
                 if segment.type == "noise":
-                    noise_coef = calc_audio_adjustment_coef(example.audio, segment.audio, segment.metadata["snr"])\
-                        if has_speaker else 1.0
+                    noise_coefs[i] = calc_audio_adjustment_coef(example.audio, segment.audio, segment.metadata["snr"])
+            for i, segment in enumerate(example._segments):
+                if segment.type == "noise":
+                    noise_coef = noise_coefs[i] if has_speaker else 1.0
                     example.audio[segment.start:segment.start + segment.audio.shape[0]] += segment.audio * noise_coef
         return example
 
