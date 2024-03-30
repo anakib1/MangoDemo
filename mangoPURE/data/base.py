@@ -19,6 +19,14 @@ class SegmentData:
 
 
 @dataclass
+class TimedAudioBatch:
+    audio: torch.Tensor
+    lengths: list[int]
+    noises_info: list[list[SegmentInfo]] = None
+    speakers_info: list[list[SegmentInfo]] = None
+
+
+@dataclass
 class MixedExample:
     """
     Audio - 1D torch tensor in default (16_000) sampling rate
