@@ -5,8 +5,8 @@ import torch
 
 @dataclass
 class SegmentInfo:
-    start: int
-    length: int
+    start: float
+    end: float
     class_id: int
 
 
@@ -16,14 +16,6 @@ class SegmentData:
     type: str
     start: int
     metadata: dict = None
-
-
-@dataclass
-class TimedAudioBatch:
-    audio: torch.Tensor
-    lengths: list[int]
-    noises_info: list[list[SegmentInfo]] = None
-    speakers_info: list[list[SegmentInfo]] = None
 
 
 @dataclass
