@@ -1,30 +1,18 @@
 from .base import TimedLoss
 import torch
-from ..data.utils import TimedAudioBatch
+from typing import Dict
 
 
 class SigmoidTimedLoss(TimedLoss):
-    def __init__(self, info_type: str = "noise"):
+    def __call__(self, batch: Dict) -> torch.Tensor:
         """
-        :param info_type: ["noise", "speaker"] selects which metadata from batch to use
+        :param batch: dictionary with params:
+            "attention_mask" - the mask of audio embeddings
+            "labels" - true labels of the model
+            "head_output" - last output of the model
+        :return: binary cross entropy loss
         """
-        self.info_type = info_type
-
-    def __call__(self, batch: TimedAudioBatch) -> torch.Tensor:
-        mask = torch.zeros(batch.audio.shape)
-        for i, length in enumerate(batch.lengths):
-            mask[i, :length, :] = 1.0
-        labels = torch.zeros(batch.audio.shape)
-        labels[:, :, 0] = 1.0
-        batch_segments = None
-        if self.info_type == "noise":
-            batch_segments = batch.noises_info
-        elif self.info_type == "speaker":
-            batch_segments = batch.speakers_info
-        assert batch_segments is not None, "segments is None for some reason"
-        for i, segments in enumerate(batch_segments):
-            for segment in segments:
-                labels[i, segment.start:segment.start + segment.length, 0] = 0.0
-                labels[i, segment.start:segment.start + segment.length, segment.class_id] = 1.0
-        loss = mask * torch.nn.BCEWithLogitsLoss()(batch.audio, labels)
-        return loss.sum() / mask.sum()
+        mask = batch["attention_mask"]
+        loss_sum = mask * torch.nn.BCEWithLogitsLoss()(batch["head_output"], batch["labels"])
+        loss = loss_sum.sum() / mask.sum()
+        return loss
