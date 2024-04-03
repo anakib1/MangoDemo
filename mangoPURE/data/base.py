@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from typing import List
 import torch
 
 
@@ -24,9 +24,9 @@ class MixedExample:
     Audio - 1D torch tensor in default (16_000) sampling rate
     """
     audio: torch.Tensor = None
-    speakers_info: list[SegmentInfo] = None
-    noises_info: list[SegmentInfo] = None
-    _segments: list[SegmentData] = None
+    speakers_info: List[SegmentInfo] = None
+    noises_info: List[SegmentInfo] = None
+    _segments: List[SegmentData] = None
     _base: SegmentData = None
 
 

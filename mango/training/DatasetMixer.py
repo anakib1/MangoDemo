@@ -29,7 +29,7 @@ class DatasetMixerConfig:
 @dataclass
 class MixedExample:
     audio: torch.Tensor
-    noise_id: Union[int, list]
+    noise_id: Union[int, List]
     diarization: torch.Tensor
     transcription: str
     # todo maybe add some mappings?
