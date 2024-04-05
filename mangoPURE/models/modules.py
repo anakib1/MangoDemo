@@ -16,7 +16,6 @@ class WhisperEmbedder(Embedder):
         :return: batch with whisper embedder output ("embeddings" ket in batch)
         """
         batch["embeddings"] = self.model(input_features=batch["input_features"]).last_hidden_state
-        del batch["input_features"]
         return batch
 
 
@@ -32,7 +31,6 @@ class LinearTimedHead(TimedHead):
         :return: batch with head output ("head_output" key in batch)
         """
         batch["head_output"] = self.model(batch["embeddings"])
-        del batch["embeddings"]
         return batch
 
 
