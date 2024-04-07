@@ -4,7 +4,7 @@ from typing import Dict
 
 
 class SigmoidTimedLoss(Loss):
-    def __call__(self, **batch: Dict) -> torch.Tensor:
+    def __call__(self, batch: Dict) -> torch.Tensor:
         """
         :param batch: dictionary with params:
             "attention_mask" - the mask of audio embeddings
@@ -19,5 +19,5 @@ class SigmoidTimedLoss(Loss):
 
 
 class CrossEntropyLoss(Loss):
-    def __call__(self, **batch: Dict) -> torch.Tensor:
+    def __call__(self, batch: Dict) -> torch.Tensor:
         return torch.nn.CrossEntropyLoss()(batch['head_output'], batch['labels'])
