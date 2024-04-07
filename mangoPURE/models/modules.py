@@ -58,4 +58,4 @@ class WhisperTimedModel(TimedModel):
         batch = self.head(batch)
         loss = self.loss_fn(batch)
         batch["loss"] = loss
-        return batch
+        return {'loss': loss, 'head_output': batch['head_output'], 'labels': batch['labels']}
