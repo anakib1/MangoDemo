@@ -16,3 +16,5 @@ tensorflow[cpu]~=2.16.1
 pillow~=10.2.0
 neptune~=1.9.1
 tensorboard~=2.16.2
+optuna~=3.5.0
+neptune-optuna~=1.2.0
