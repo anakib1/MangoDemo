@@ -4,7 +4,7 @@ from typing import Dict
 
 
 class Embedder(torch.nn.Module):
-    def forward(self, **batch: Dict) -> Dict:
+    def forward(self, batch: Dict) -> Dict:
         """
         The model (transformer usually) should get the input of shape (B x T_in x F_in)
             and return the tensor of (B x T_out x F_out)
@@ -19,12 +19,13 @@ class TimedHead(torch.nn.Module):
         self.input_dim = input_dim
         self.num_classes = num_classes
 
-    def forward(self, **batch: Dict) -> Dict:
+    def forward(self, batch: Dict) -> Dict:
         """
         The model should get output from embedder (usually transformer) of the shape (B x T x F_in)
             and transform it to (B x T x NUM_CLASSES) where the last dimension is something like sigmoid or softmax
         """
         pass
+
 
 class SoloHead(torch.nn.Module):
     def __init__(self, input_dim, num_classes):
@@ -32,17 +33,18 @@ class SoloHead(torch.nn.Module):
         self.input_dim = input_dim
         self.num_classes = num_classes
 
-    def forward(self, **batch: Dict) -> Dict:
+    def forward(self, batch: Dict) -> Dict:
         """
         The model transforms (B X T X F_in) into (B x NUM_CLASSES).
         :param batch:
         :return:
         """
+
     pass
 
 
 class Loss:
-    def __call__(self, **batch: Dict) -> torch.Tensor:
+    def __call__(self, batch: Dict) -> torch.Tensor:
         pass
 
 
@@ -62,6 +64,7 @@ class TimedModel(torch.nn.Module):
         self.embedder = embedder
         self.head = head
         self.loss_fn = loss_fn
+
 
 class SoloModel(torch.nn.Module):
     def __init__(self, embedder: Embedder, head: TimedHead, loss_fn: Loss):

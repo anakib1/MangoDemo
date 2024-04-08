@@ -71,4 +71,4 @@ class OneNoiseCollator:
         batch = Whisper.extract_features(self.feature_extractor, [x.audio for x in batch_list])
 
         batch['labels'] = torch.tensor([x.noises_info[0].class_id for x in batch_list])
-        return batch
+        return {'batch': batch}

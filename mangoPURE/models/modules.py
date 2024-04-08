@@ -9,7 +9,7 @@ class WhisperEmbedder(Embedder):
         super().__init__()
         self.model = WhisperModel.from_pretrained(hf_name).encoder
 
-    def forward(self, **batch) -> Dict:
+    def forward(self, batch) -> Dict:
         """
         :param batch: dictionary that should have key "input_features"
             that whisper encoder takes
@@ -24,7 +24,7 @@ class LinearTimedHead(TimedHead):
         super().__init__(input_dim, num_classes)
         self.model = torch.nn.Linear(input_dim, num_classes)
 
-    def forward(self, **batch: Dict) -> Dict:
+    def forward(self, batch: Dict) -> Dict:
         """
         :param batch: dictionary that should have key "embeddings",
             embedder module usually provide this data
@@ -39,7 +39,7 @@ class LinearSoloHead(SoloHead):
         super().__init__(input_dim, num_classes)
         self.model = torch.nn.Linear(input_dim, num_classes)
 
-    def forward(self, **batch: Dict) -> Dict:
+    def forward(self, batch: Dict) -> Dict:
         batch['head_output'] = self.model(batch['embeddings'].mean(dim=1))
         return batch
 
@@ -53,9 +53,9 @@ class WhisperTimedModel(TimedModel):
     ):
         super().__init__(embedder, head, loss_fn)
 
-    def forward(self, **batch) -> Dict:
-        batch = self.embedder(**batch)
-        batch = self.head(**batch)
-        loss = self.loss_fn(**batch)
+    def forward(self, batch) -> Dict:
+        batch = self.embedder(batch)
+        batch = self.head(batch)
+        loss = self.loss_fn(batch)
         batch["loss"] = loss
-        return batch
+        return {'loss': loss, 'head_output': batch['head_output'], 'labels': batch['labels']}
