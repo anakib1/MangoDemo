@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from transformers import WhisperFeatureExtractor
 from typing import Dict
 from .utils import Whisper, Labels
+import torch
 
 
 @dataclass
@@ -54,3 +55,13 @@ class WhisperToTimedBatch(MixedToTimedCollator):
                     self.config.output_timestamps
                 )
         return batch
+
+
+@dataclass
+class SoundNetCollator:
+    audio_len: int
+
+    def __call__(self, batch_list) -> Dict:
+        audio_list = [x.audio for x in batch_list]
+        audio_tensor = torch.stack(audio_list, dim=0)
+        return {"input_audios": audio_tensor}
