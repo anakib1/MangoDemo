@@ -78,8 +78,14 @@ class OneNoiseCollator:
 class SoundNetCollator:
     audio_len: int
 
+    def _pad_truncate(self, audio: torch.Tensor):
+        audio_len = audio.shape[0]
+        if audio_len >= self.audio_len:
+            return audio_len[:self.audio_len]
+        return torch.concatenate([audio, torch.zeros(self.audio_len - audio_len)])
+
     def __call__(self, batch_list: List[MixedExample]) -> Dict:
-        audio_list = [x.audio for x in batch_list]
+        audio_list = [self._pad_truncate(x.audio) for x in batch_list]
         labels = torch.tensor([x.noises_info[0].class_id for x in batch_list])
         audio_tensor = torch.stack(audio_list, dim=0)
         return {"input_audios": audio_tensor, "labels": labels}
