@@ -4,7 +4,7 @@ from ..data.base import MixedExample
 from .base import MixedToTimedCollator
 from dataclasses import dataclass
 from transformers import WhisperFeatureExtractor
-from typing import Dict
+from typing import Dict, List
 from .utils import Whisper, Labels
 
 
@@ -23,7 +23,7 @@ class WhisperToTimedBatch(MixedToTimedCollator):
     feature_extractor: WhisperFeatureExtractor
     config: WhisperToTimedBatchConfig
 
-    def __call__(self, batch_list: list[MixedExample]) -> Dict:
+    def __call__(self, batch_list: List[MixedExample]) -> Dict:
         """
         Creates dict with "input_features" and "attention_mask"
         if create_labels=True also provides labels for the loss, see utils.Labels.create_labels
@@ -62,7 +62,7 @@ class WhisperToTimedBatch(MixedToTimedCollator):
 class OneNoiseCollator:
     feature_extractor: WhisperFeatureExtractor
 
-    def __call__(self, batch_list: list[MixedExample]) -> Dict:
+    def __call__(self, batch_list: List[MixedExample]) -> Dict:
         """
         Creates dict with "input_features" and "attention_mask"
         if create_labels=True also provides labels for the loss, see utils.Labels.create_labels
@@ -78,7 +78,8 @@ class OneNoiseCollator:
 class SoundNetCollator:
     audio_len: int
 
-    def __call__(self, batch_list) -> Dict:
+    def __call__(self, batch_list: List[MixedExample]) -> Dict:
         audio_list = [x.audio for x in batch_list]
+        labels = torch.tensor([x.noises_info[0].class_id for x in batch_list])
         audio_tensor = torch.stack(audio_list, dim=0)
-        return {"input_audios": audio_tensor}
+        return {"input_audios": audio_tensor, "labels": labels}
