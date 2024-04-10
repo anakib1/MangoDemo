@@ -27,7 +27,23 @@ class TimedHead(torch.nn.Module):
         pass
 
 
-class TimedLoss:
+class SoloHead(torch.nn.Module):
+    def __init__(self, input_dim, num_classes):
+        super().__init__()
+        self.input_dim = input_dim
+        self.num_classes = num_classes
+
+    def forward(self, batch: Dict) -> Dict:
+        """
+        The model transforms (B X T X F_in) into (B x NUM_CLASSES).
+        :param batch:
+        :return:
+        """
+
+    pass
+
+
+class Loss:
     def __call__(self, batch: Dict) -> torch.Tensor:
         pass
 
@@ -42,8 +58,16 @@ class TimedModel(torch.nn.Module):
             self,
             embedder: Embedder,
             head: TimedHead,
-            loss_fn: TimedLoss,
+            loss_fn: Loss,
     ):
+        super().__init__()
+        self.embedder = embedder
+        self.head = head
+        self.loss_fn = loss_fn
+
+
+class SoloModel(torch.nn.Module):
+    def __init__(self, embedder: Embedder, head: TimedHead, loss_fn: Loss):
         super().__init__()
         self.embedder = embedder
         self.head = head

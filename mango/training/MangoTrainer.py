@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import accelerate
 from dataclasses import dataclass, asdict
-from typing import List, Any, Dict, Union
+from typing import List, Any, Dict, Union, Literal
 import logging
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
@@ -37,7 +37,8 @@ class TrainerConfig:
     logs_frequency_batches: int = 1
     save_strategy: str = 'end'
     push_to_hub: bool = True
-    mixed_precision: str = None
+    mixed_precision: Union[None, Literal['fp16']] = None
+    grad_clip: bool = False
     lr: float = 1e-3
     weight_decay: float = 1e-3
     scheduler_strategy: str = 'batch'
@@ -228,6 +229,8 @@ class MangoTrainer:
                 loss = output['loss']
 
                 self.accelerator.backward(loss)
+                if self.config.grad_clip:
+                    self.accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
 
                 self.optimizer.step()
                 if self.config.scheduler_strategy == 'batch':
