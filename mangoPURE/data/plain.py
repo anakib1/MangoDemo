@@ -12,7 +12,7 @@ class AudioDataset:
         self.dataset = dataset
         self.idx = 0
         self.len = len(dataset)
-        self.transforms = transforms
+        self.transforms = transforms if transforms is not None else []
         self.mapper = Name2IdMapper(start_id=0)
 
     def generate(self) -> MixedExample:
