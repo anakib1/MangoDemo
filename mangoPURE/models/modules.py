@@ -73,6 +73,7 @@ class SoundNet(torch.nn.Module):
         :param num_classes: number of classes to predict
         :param hardcode_len: hardcoded length of transformer input dimension
         """
+        super().__init__()
         self.audio_len = audio_len
         self.net = SoundNetRaw(clip_length=hardcode_len, n_classes=num_classes)
         self.loss = torch.nn.CrossEntropyLoss()
