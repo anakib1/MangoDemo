@@ -62,7 +62,7 @@ class WhisperTimedModel(TimedModel):
         return {'loss': loss, 'head_output': batch['head_output'], 'labels': batch['labels']}
 
 
-class SoundNet(SoundNetRaw):
+class SoundNet:
     def __init__(
             self,
             num_classes: int,
@@ -74,13 +74,12 @@ class SoundNet(SoundNetRaw):
         :param hardcode_len: hardcoded length of transformer input dimension
         """
         self.audio_len = audio_len
-        super().__init__(
-            clip_length=hardcode_len,
-            n_classes=num_classes
-        )
+        self.net = SoundNetRaw(hardcode_len, num_classes)
+        self.loss = torch.nn.CrossEntropyLoss()
 
-    def forward(self, input_audios: torch.Tensor) -> torch.Tensor:
+    def forward(self, input_audios: torch.Tensor, labels: torch.Tensor) -> Dict:
         assert input_audios.shape[1] == self.audio_len, f"The input to the model should be fixed: {self.audio_len}"
         x = torch.unsqueeze(input_audios, dim=1)
-        y = super().forward(x)
-        return y
+        y = self.net.forward(x)
+        loss = self.loss(y, labels)
+        return {"loss": loss, "logits": y}
