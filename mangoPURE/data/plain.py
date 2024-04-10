@@ -15,11 +15,9 @@ class AudioDataset:
         self.len = len(dataset)
         self.transforms = transforms if transforms is not None else []
         self.mapper = Name2IdMapper(start_id=0)
-
+        self.cache = None
         if cache:
             self.cache = [self.generate() for _ in tqdm(range(self.len))]
-        else:
-            self.cache = None
 
     def generate_cached(self):
         ret = self.cache[self.idx]
