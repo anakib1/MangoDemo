@@ -62,7 +62,7 @@ class WhisperTimedModel(TimedModel):
         return {'loss': loss, 'head_output': batch['head_output'], 'labels': batch['labels']}
 
 
-class SoundNet:
+class SoundNet(torch.nn.Module):
     def __init__(
             self,
             num_classes: int,
