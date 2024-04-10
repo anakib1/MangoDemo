@@ -2,6 +2,7 @@ from .base import Embedder, TimedHead, Loss, TimedModel, SoloHead
 from transformers import WhisperModel
 import torch
 from typing import Dict, Union
+from .external.soundnet import SoundNetRaw
 
 
 class WhisperEmbedder(Embedder):
@@ -9,7 +10,7 @@ class WhisperEmbedder(Embedder):
         super().__init__()
         self.model = WhisperModel.from_pretrained(hf_name).encoder
 
-    def forward(self, batch) -> Dict:
+    def forward(self, batch: Dict) -> Dict:
         """
         :param batch: dictionary that should have key "input_features"
             that whisper encoder takes
@@ -53,9 +54,33 @@ class WhisperTimedModel(TimedModel):
     ):
         super().__init__(embedder, head, loss_fn)
 
-    def forward(self, batch) -> Dict:
+    def forward(self, batch: Dict) -> Dict:
         batch = self.embedder(batch)
         batch = self.head(batch)
         loss = self.loss_fn(batch)
         batch["loss"] = loss
         return {'loss': loss, 'head_output': batch['head_output'], 'labels': batch['labels']}
+
+
+class SoundNet(SoundNetRaw):
+    def __init__(
+            self,
+            num_classes: int,
+            audio_len: int,
+            hardcode_len: int,
+    ):
+        """
+        :param num_classes: number of classes to predict
+        :param hardcode_len: hardcoded length of transformer input dimension
+        """
+        self.audio_len = audio_len
+        super().__init__(
+            clip_length=hardcode_len,
+            n_classes=num_classes
+        )
+
+    def forward(self, input_audios: torch.Tensor) -> torch.Tensor:
+        assert input_audios.shape[1] == self.audio_len, f"The input to the model should be fixed: {self.audio_len}"
+        x = torch.unsqueeze(input_audios, dim=1)
+        y = super().forward(x)
+        return y

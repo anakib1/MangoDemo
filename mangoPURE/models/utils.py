@@ -8,13 +8,14 @@ from ..globals import RATE
 class Whisper:
 
     @staticmethod
-    def update_segment_infos(audio: torch.Tensor, infos: List[SegmentInfo]):
+    def update_segment_infos(audio: torch.Tensor, infos: List[SegmentInfo], max_len_sec: float = 30.0):
         """
         Transforms segment infos according to whisper feature extractor output
         !!!updates info in-place
+        :param max_len_sec: maximum audio length in seconds
         """
         num_secs = audio.shape[0] / RATE
-        if num_secs > 30.0:
+        if num_secs > max_len_sec:
             raise Exception("audio can not be longer than 30 seconds")
         norm_coef = num_secs / 30.0
         for info in infos:

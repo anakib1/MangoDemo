@@ -72,3 +72,13 @@ class OneNoiseCollator:
 
         batch['labels'] = torch.tensor([x.noises_info[0].class_id for x in batch_list])
         return {'batch': batch}
+
+
+@dataclass
+class SoundNetCollator:
+    audio_len: int
+
+    def __call__(self, batch_list) -> Dict:
+        audio_list = [x.audio for x in batch_list]
+        audio_tensor = torch.stack(audio_list, dim=0)
+        return {"input_audios": audio_tensor}

@@ -13,8 +13,7 @@ class SigmoidTimedLoss(Loss):
         :return: binary cross entropy loss
         """
         mask = batch["attention_mask"]
-        loss_sum = mask * torch.nn.BCEWithLogitsLoss()(batch["head_output"], batch["labels"])
-        loss = loss_sum.sum() / mask.sum()
+        loss = torch.nn.BCEWithLogitsLoss(pos_weight=mask)(batch["head_output"], batch["labels"])
         return loss
 
 
