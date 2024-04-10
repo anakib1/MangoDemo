@@ -5,8 +5,8 @@ import torch
 
 @dataclass
 class SegmentInfo:
-    start: int
-    length: int
+    start: float
+    end: float
     class_id: int
 
 

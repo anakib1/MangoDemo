@@ -60,8 +60,8 @@ class CreateRandomSpeaker(MixerTransform):
 
         mixed_example = MixedExample(
             speakers_info=[SegmentInfo(
-                start=0,
-                length=speaker_example.audio.shape[0],
+                start=0.0,
+                end=1.0,
                 class_id=speaker_example.class_id
             )],
             _base=SegmentData(
@@ -91,11 +91,15 @@ class AddRandomSpeakerSegment(MixerTransform):
 
         speaker_audio, start_pos = Generate.position_segment_in_audio(example._base.audio, speaker_example.audio)
 
+        base_audio_length = example._base.audio.shape[0]
+        rel_start = start_pos / base_audio_length
+        rel_end = rel_start + speaker_audio.shape[0] / base_audio_length
+
         if example.speakers_info is None:
             example.speakers_info = []
         example.speakers_info.append(SegmentInfo(
-            start=start_pos,
-            length=speaker_audio.shape[0],
+            start=rel_start,
+            end=rel_end,
             class_id=speaker_example.class_id
         ))
 
@@ -196,8 +200,8 @@ class AddRandomFilledNoise(MixerTransform):
         if example.noises_info is None:
             example.noises_info = []
         example.noises_info.append(SegmentInfo(
-            start=0,
-            length=noise_len,
+            start=0.0,
+            end=1.0,
             class_id=noise_example.class_id
         ))
 
@@ -235,11 +239,15 @@ class AddRandomNoiseSegment(MixerTransform):
 
         noise_audio, start_pos = Generate.position_segment_in_audio(example._base.audio, noise_example.audio)
 
+        base_audio_length = example._base.audio.shape[0]
+        rel_start = start_pos / base_audio_length
+        rel_end = rel_start + noise_audio.shape[0] / base_audio_length
+
         if example.noises_info is None:
             example.noises_info = []
         example.noises_info.append(SegmentInfo(
-            start=start_pos,
-            length=noise_audio.shape[0],
+            start=rel_start,
+            end=rel_end,
             class_id=noise_example.class_id
         ))
 

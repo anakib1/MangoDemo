@@ -1,7 +1,5 @@
 import torch
-from typing import Union
 import random
-from .base import MixedExample, SegmentInfo
 
 
 def calc_audio_adjustment_coef(
@@ -30,33 +28,6 @@ def expand_tensor(arr: torch.Tensor, length: int) -> torch.Tensor:
     ans = arr.tile(num)
     ans = torch.cat([ans, arr[:length - num * arr.shape[0]]])
     return ans
-
-
-class Resize:
-    @staticmethod
-    def resize_segment(segment_info: SegmentInfo, start_size: int, end_size: int) -> SegmentInfo:
-        """
-        This function resizes the info when audio (embedding) length changes
-        Be careful it works INPLACE!!!
-        """
-        segment_info.start = int(segment_info.start / start_size * end_size)
-        segment_info.length = int(segment_info.length / start_size * end_size)
-        return segment_info
-
-    @staticmethod
-    def resize_mixed_example_info(mixed_example: MixedExample, new_size: int) -> MixedExample:
-        """
-        This function resizes the info in the example when audio (embedding) length changes
-        Be careful it works INPLACE!!!
-        """
-        size = mixed_example.audio.shape[0]
-        if mixed_example.speakers_info is not None:
-            for seg in mixed_example.speakers_info:
-                Resize.resize_segment(seg, size, new_size)
-        if mixed_example.noises_info is not None:
-            for seg in mixed_example.noises_info:
-                Resize.resize_segment(seg, size, new_size)
-        return mixed_example
 
 
 class Generate:
