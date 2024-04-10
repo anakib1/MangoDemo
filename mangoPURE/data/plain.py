@@ -33,6 +33,10 @@ class AudioDataset:
         rate = self.dataset[self.idx]["audio"]["sampling_rate"]
         audio = self.dataset[self.idx]["audio"]["array"]
         noise = self.mapper.add_name(self.dataset[self.idx]["class"])
+        self.idx += 1
+        if self.idx >= self.len:
+            self.idx = 0
+
         audio = Resample(rate, RATE)(audio)
         example = MixedExample(audio=audio, noises_info=[SegmentInfo(class_id=noise, start=0.0, end=1.0)])
         for transform in self.transforms:
