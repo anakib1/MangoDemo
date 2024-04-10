@@ -81,7 +81,7 @@ class SoundNetCollator:
     def _pad_truncate(self, audio: torch.Tensor):
         audio_len = audio.shape[0]
         if audio_len >= self.audio_len:
-            return audio_len[:self.audio_len]
+            return audio[:self.audio_len]
         return torch.concatenate([audio, torch.zeros(self.audio_len - audio_len)])
 
     def __call__(self, batch_list: List[MixedExample]) -> Dict:

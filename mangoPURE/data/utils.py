@@ -6,7 +6,7 @@ def calc_audio_adjustment_coef(
         original_input: torch.Tensor,
         noise: torch.Tensor,
         snr_dB: float,
-    ) -> float:
+) -> float:
     """
     Calculates adjustment coefficient in order to add noise appropriately
     :param original_input: input audio 1d tensor
@@ -63,6 +63,7 @@ class Name2IdMapper:
     """
     This class handles conversion from names to integer ids
     """
+
     def __init__(self, start_id=1):
         self.name2id = dict()
         self.id2name = dict()
@@ -74,7 +75,7 @@ class Name2IdMapper:
     def get_id(self, name):
         return self.name2id[name]
 
-    def add_name(self, name):
+    def add_name(self, name) -> int:
         """
         Adds name to mapper if the name does not exist
         """
@@ -82,3 +83,4 @@ class Name2IdMapper:
             self.name2id[name] = self.current_new_id
             self.id2name[self.current_new_id] = name
             self.current_new_id += 1
+        return self.name2id[name]
