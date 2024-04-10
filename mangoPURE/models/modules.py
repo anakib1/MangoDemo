@@ -74,7 +74,7 @@ class SoundNet:
         :param hardcode_len: hardcoded length of transformer input dimension
         """
         self.audio_len = audio_len
-        self.net = SoundNetRaw(hardcode_len, num_classes)
+        self.net = SoundNetRaw(clip_length=hardcode_len, n_classes=num_classes)
         self.loss = torch.nn.CrossEntropyLoss()
 
     def forward(self, input_audios: torch.Tensor, labels: torch.Tensor) -> Dict:
