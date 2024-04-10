@@ -83,4 +83,4 @@ class SoundNet(torch.nn.Module):
         x = torch.unsqueeze(input_audios, dim=1)
         y = self.net.forward(x)
         loss = self.loss(y, labels)
-        return {"loss": loss, "logits": y}
+        return {"loss": loss, "logits": y, "labels": labels}
