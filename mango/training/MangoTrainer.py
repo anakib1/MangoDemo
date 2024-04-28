@@ -224,17 +224,22 @@ class MangoTrainer:
         for i, batch in enumerate(self.train_loader):
             logger.debug(f'Starting batch {i}')
             with self.accelerator.accumulate(self.model):
+                logger.debug(f'Got after accumulate')
                 self.optimizer.zero_grad()
+                logger.debug(f'Got after optimizer')
                 output = self.model(**batch)
+                logger.debug(f'Got after output')
                 if 'loss' not in output:
                     raise Exception("Model 'forward' function did not return 'loss' as expected. ")
                 loss = output['loss']
 
                 self.accelerator.backward(loss)
+                logger.debug(f'Got after backwards')
                 if self.config.grad_clip:
                     self.accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
 
                 self.optimizer.step()
+                logger.debug(f'Got after step')
                 if self.config.scheduler_strategy == 'batch':
                     if isinstance(self.scheduler, torch.optim.lr_scheduler.CosineAnnealingWarmRestarts):
                         self.scheduler.step(self.epoch + i / len(self.train_loader))
