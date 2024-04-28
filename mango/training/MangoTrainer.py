@@ -257,7 +257,7 @@ class MangoTrainer:
                 self.train_bar.update(1)
                 self.global_train_step += 1
                 if self.global_train_step % self.config.logs_frequency_batches == 0:
-                    logger.debug(f'Global train step {self.global_train_step}')
+                    logger.info(f'Global train step {self.global_train_step}')
 
         return TrainingOutput(epoch_id=epoch_index, losses=losses,
                               model_outputs=self.group_predictions(train_outputs))
@@ -290,6 +290,6 @@ class MangoTrainer:
                     self.eval_bar.update(1)
                     self.global_eval_step += 1
                     if self.global_eval_step % self.config.logs_frequency_batches == 0:
-                        logger.debug(f'Global eval step {self.global_eval_step}')
+                        logger.info(f'Global eval step {self.global_eval_step}')
 
         return EvalOutput(epoch_id=epoch_index, losses=losses, model_outputs=self.group_predictions(model_outputs))
