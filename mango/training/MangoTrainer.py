@@ -220,7 +220,9 @@ class MangoTrainer:
         train_outputs = {}
         losses = []
 
+        logger.debug(f'Starting epoch {epoch_index}')
         for i, batch in enumerate(self.train_loader):
+            logger.debug(f'Starting batch {i}')
             with self.accelerator.accumulate(self.model):
                 self.optimizer.zero_grad()
                 output = self.model(**batch)
@@ -244,6 +246,7 @@ class MangoTrainer:
                     train_outputs[k] = []
                 train_outputs[k].append(v.detach())
             losses.append(float(loss))
+            logger.debug(f'Losses aggregated successfully.')
 
             if self.accelerator.is_main_process:
                 self.train_bar.update(1)
