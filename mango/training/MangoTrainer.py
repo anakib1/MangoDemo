@@ -82,7 +82,7 @@ class MangoTrainer:
                                                  project_dir=self.project_dir,
                                                  mixed_precision=self.config.mixed_precision,
                                                  gradient_accumulation_plugin=plugin)
-        self.accelerator = accelerator
+        self.accelerator: accelerate.Accelerator = accelerator
         if optimizer is None:
             optimizer = torch.optim.AdamW(model.parameters(), lr=self.config.lr, weight_decay=self.config.weight_decay)
         self.optimizer = optimizer
@@ -178,6 +178,8 @@ class MangoTrainer:
                 logger.error(f'Tracker {tracker} failed to save model. Exception: {ex}')
 
     def log_results(self, results: Dict[str, float], outputs: Union[TrainingOutput, EvalOutput]) -> None:
+        if not self.accelerator.is_main_process:
+            return
         iteration_class = 'eval' if isinstance(outputs, EvalOutput) else 'train'
         results.update({'loss': np.mean(outputs.losses)})
         results.update({'lr': self.scheduler.get_last_lr()[0]})
@@ -259,6 +261,8 @@ class MangoTrainer:
                 if self.global_train_step % self.config.logs_frequency_batches == 0:
                     logger.info(f'Global train step {self.global_train_step}')
 
+        losses, train_outputs = self.accelerator.gather_for_metrics((losses, train_outputs))
+
         return TrainingOutput(epoch_id=epoch_index, losses=losses,
                               model_outputs=self.group_predictions(train_outputs))
 
@@ -292,4 +296,5 @@ class MangoTrainer:
                     if self.global_eval_step % self.config.logs_frequency_batches == 0:
                         logger.info(f'Global eval step {self.global_eval_step}')
 
+        losses, model_outputs = self.accelerator.gather_for_metrics((losses, model_outputs))
         return EvalOutput(epoch_id=epoch_index, losses=losses, model_outputs=self.group_predictions(model_outputs))
