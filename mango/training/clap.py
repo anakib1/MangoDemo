@@ -75,6 +75,7 @@ class ClapTrainer(MangoTrainer):
             self.optimizer.zero_grad()
             for j in range(self.config.num_repeats):
                 embed1 = self.model(accumulated_audio_inputs[j], accumulated_text_inputs[j])
+                """
                 gradient_text_embeddings = embed1['text_embeddings']
                 gradient_audio_embeddings = embed1['audio_embeddings']
 
@@ -93,6 +94,9 @@ class ClapTrainer(MangoTrainer):
                 del output
                 self.accelerator.backward(loss)
                 break
+                """
+                loss = embed1.sum()
+                self.accelerator.backward(loss)
 
             if self.config.grad_clip:
                 self.accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
