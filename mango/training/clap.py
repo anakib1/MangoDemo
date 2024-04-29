@@ -86,7 +86,7 @@ class ClapTrainer(MangoTrainer):
                 gradient_text_embeddings = embed1['text_embeddings']
                 gradient_audio_embeddings = embed1['audio_embeddings']
 
-                input_audio = torch.concatenate(accumulated_audio_embeddings[:j] + [gradient_audio_em   beddings] + accumulated_audio_embeddings[j + 1:], dim=0).clone()
+                input_audio = torch.concatenate(accumulated_audio_embeddings[:j] + [gradient_audio_embeddings] + accumulated_audio_embeddings[j + 1:], dim=0).clone()
                 input_text = torch.concatenate(accumulated_text_embeddings[:j] + [gradient_text_embeddings] + accumulated_text_embeddings[j + 1:], dim=0).clone()
 
                 self.accelerator.wait_for_everyone()
