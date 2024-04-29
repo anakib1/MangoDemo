@@ -251,8 +251,8 @@ class MangoTrainer:
             for k, v in output.items():
                 if k not in train_outputs:
                     train_outputs[k] = []
-                train_outputs[k].append(v.detach())
-            losses.append(float(loss))
+                train_outputs[k].append(self.accelerator.gather_for_metrics(v.detach()))
+            losses.append(self.accelerator.gather_for_metrics(loss))
             logger.debug(f'Losses aggregated successfully.')
 
             if self.accelerator.is_main_process:
@@ -260,8 +260,6 @@ class MangoTrainer:
                 self.global_train_step += 1
                 if self.global_train_step % self.config.logs_frequency_batches == 0:
                     logger.info(f'Global train step {self.global_train_step}')
-
-        losses, train_outputs = self.accelerator.gather_for_metrics((losses, train_outputs))
 
         return TrainingOutput(epoch_id=epoch_index, losses=losses,
                               model_outputs=self.group_predictions(train_outputs))
@@ -287,8 +285,8 @@ class MangoTrainer:
                 for k, v in output.items():
                     if k not in model_outputs:
                         model_outputs[k] = []
-                    model_outputs[k].append(v)
-                losses.append(float(loss))
+                    model_outputs[k].append(self.accelerator.gather_for_metrics(v))
+                losses.append(self.accelerator.gather_for_metrics(loss))
 
                 if self.accelerator.is_main_process:
                     self.eval_bar.update(1)
@@ -296,5 +294,4 @@ class MangoTrainer:
                     if self.global_eval_step % self.config.logs_frequency_batches == 0:
                         logger.info(f'Global eval step {self.global_eval_step}')
 
-        losses, model_outputs = self.accelerator.gather_for_metrics((losses, model_outputs))
         return EvalOutput(epoch_id=epoch_index, losses=losses, model_outputs=self.group_predictions(model_outputs))
