@@ -89,7 +89,7 @@ class ClapTrainer(MangoTrainer):
                     train_outputs[k] = []
                 train_outputs[k].append(self.accelerator.gather_for_metrics(v))
             loss = output['loss']
-            losses.extend(self.accelerator.gather_for_metrics(torch.as_tensor(loss).sum()).cpu().numpy())
+            losses.extend(self.accelerator.gather_for_metrics(loss).cpu().numpy())
 
             accumulated_text_inputs = []
             accumulated_audio_inputs = []
