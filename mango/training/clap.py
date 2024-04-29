@@ -104,7 +104,7 @@ class ClapTrainer(MangoTrainer):
                 del output
 
                 self.accelerator.wait_for_everyone()
-                self.accelerator.backward(loss)
+                self.accelerator.backward(loss, retain_graph=True)
                 self.accelerator.wait_for_everyone()
                 break
 
