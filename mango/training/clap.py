@@ -87,6 +87,8 @@ class ClapTrainer(MangoTrainer):
                 if self.config.grad_clip:
                     self.accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
 
+                del embed
+
             self.optimizer.step()
 
             with torch.no_grad():
