@@ -64,7 +64,7 @@ class ClapTrainer(MangoTrainer):
             with torch.no_grad():
                 accumulated_text_inputs.append(texts)
                 accumulated_audio_inputs.append(audios)
-                embed = self.model(batch['audio_model_input'], batch['text_model_input'])
+                embed = self.model(audios, texts)
                 accumulated_text_embeddings.append(embed['text_embeddings'])
                 accumulated_audio_embeddings.append(embed['audio_embeddings'])
                 del embed
