@@ -85,7 +85,7 @@ class ClapTrainer(MangoTrainer):
                 del gradient_text_embeddings
                 del gradient_audio_embeddings
                 del output
-
+                break
                 self.accelerator.backward(loss)
                 break
 
