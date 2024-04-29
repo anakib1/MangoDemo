@@ -59,8 +59,8 @@ class ClapTrainer(MangoTrainer):
                 accumulated_text_inputs.append(batch['text_model_input'])
                 accumulated_audio_inputs.append(batch['audio_model_input'])
                 embed = self.model(batch['audio_model_input'], batch['text_model_input'])
-                accumulated_text_embeddings.append(embed['audio_embeddings'])
-                accumulated_audio_embeddings.append(embed['text_embeddings'])
+                accumulated_text_embeddings.append(embed['text_embeddings'])
+                accumulated_audio_embeddings.append(embed['audio_embeddings'])
                 del embed
 
             if (i + 1) % self.config.num_repeats > 0:
@@ -69,8 +69,8 @@ class ClapTrainer(MangoTrainer):
             self.optimizer.zero_grad()
             for j in range(self.config.num_repeats):
                 embed = self.model(accumulated_audio_inputs[j], accumulated_text_inputs[j])
-                gradient_text_embeddings = embed['audio_embeddings']
-                gradient_audio_embeddings = embed['text_embeddings']
+                gradient_text_embeddings = embed['text_embeddings']
+                gradient_audio_embeddings = embed['audio_embeddings']
 
                 output = self.model(torch.concatenate(
                     accumulated_audio_embeddings[:j] + [gradient_audio_embeddings] + accumulated_audio_embeddings[
