@@ -69,7 +69,6 @@ class ClapTrainer(MangoTrainer):
 
                 accumulated_text_embeddings.append(embed['text_embeddings'])
                 accumulated_audio_embeddings.append(embed['audio_embeddings'])
-                del embed
 
             if (i + 1) % self.config.num_repeats > 0:
                 continue
@@ -90,12 +89,6 @@ class ClapTrainer(MangoTrainer):
                 if 'loss' not in output:
                     raise Exception("Model 'forward' function did not return 'loss' as expected. ")
                 loss = output['loss']
-                del embed1
-                del input_audio
-                del input_text
-                del gradient_text_embeddings
-                del gradient_audio_embeddings
-                del output
 
                 self.accelerator.backward(loss, retain_graph=True)
                 break
