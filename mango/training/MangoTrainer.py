@@ -252,7 +252,7 @@ class MangoTrainer:
                 if k not in train_outputs:
                     train_outputs[k] = []
                 train_outputs[k].append(self.accelerator.gather_for_metrics(v.detach()))
-            losses.append(self.accelerator.gather_for_metrics(loss.numpy()))
+            losses.extend(self.accelerator.gather_for_metrics(loss.detach()).cpu().numpy())
             logger.debug(f'Losses aggregated successfully.')
 
             if self.accelerator.is_main_process:
@@ -286,7 +286,7 @@ class MangoTrainer:
                     if k not in model_outputs:
                         model_outputs[k] = []
                     model_outputs[k].append(self.accelerator.gather_for_metrics(v))
-                losses.append(self.accelerator.gather_for_metrics(loss.numpy()))
+                losses.append(self.accelerator.gather_for_metrics(loss).cpu().numpy())
 
                 if self.accelerator.is_main_process:
                     self.eval_bar.update(1)
