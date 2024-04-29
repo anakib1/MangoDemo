@@ -95,7 +95,7 @@ class ClapTrainer(MangoTrainer):
                 self.accelerator.backward(loss)
                 break
                 """
-                loss = embed1.sum()
+                loss = embed1['text_embeddings'].sum()
                 self.accelerator.backward(loss)
 
             if self.config.grad_clip:
