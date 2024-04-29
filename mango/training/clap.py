@@ -82,12 +82,12 @@ class ClapTrainer(MangoTrainer):
                 if 'loss' not in output:
                     raise Exception("Model 'forward' function did not return 'loss' as expected. ")
                 loss = output['loss']
+                del embed
 
                 self.accelerator.backward(loss)
                 if self.config.grad_clip:
                     self.accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
 
-                del embed
 
             self.optimizer.step()
 
