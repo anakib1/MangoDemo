@@ -64,7 +64,11 @@ class ClapTrainer(MangoTrainer):
             with torch.no_grad():
                 accumulated_text_inputs.append(texts)
                 accumulated_audio_inputs.append(audios)
+
+                self.accelerator.wait_for_everyone()
                 embed = self.model(audios, texts)
+                self.accelerator.wait_for_everyone()
+
                 accumulated_text_embeddings.append(embed['text_embeddings'])
                 accumulated_audio_embeddings.append(embed['audio_embeddings'])
                 del embed
@@ -74,14 +78,20 @@ class ClapTrainer(MangoTrainer):
 
             self.optimizer.zero_grad()
             for j in range(self.config.num_repeats):
+
+                self.accelerator.wait_for_everyone()
                 embed1 = self.model(accumulated_audio_inputs[j], accumulated_text_inputs[j])
+                self.accelerator.wait_for_everyone()
 
                 gradient_text_embeddings = embed1['text_embeddings']
                 gradient_audio_embeddings = embed1['audio_embeddings']
 
                 input_audio = torch.concatenate(accumulated_audio_embeddings[:j] + [gradient_audio_embeddings] + accumulated_audio_embeddings[j + 1:], dim=0)
                 input_text = torch.concatenate(accumulated_text_embeddings[:j] + [gradient_text_embeddings] + accumulated_text_embeddings[j + 1:], dim=0)
+
+                self.accelerator.wait_for_everyone()
                 output = self.model(input_audio, input_text, calculate_loss=True)
+                self.accelerator.wait_for_everyone()
 
                 if 'loss' not in output:
                     raise Exception("Model 'forward' function did not return 'loss' as expected. ")
@@ -98,9 +108,12 @@ class ClapTrainer(MangoTrainer):
                 self.accelerator.wait_for_everyone()
                 break
 
+
+            self.accelerator.wait_for_everyone()
             if self.config.grad_clip:
                 self.accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
             self.optimizer.step()
+            self.accelerator.wait_for_everyone()
 
             with torch.no_grad():
                 output = self.model(torch.concatenate(accumulated_audio_embeddings, dim=0),
