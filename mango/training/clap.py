@@ -61,8 +61,8 @@ class ClapTrainer(MangoTrainer):
 
             self.optimizer.zero_grad()
             for j in range(self.config.num_repeats):
-                gradient_text_embeddings = self.model.text_encoder(accumulated_text_inputs[j])
-                gradient_audio_embeddings = self.model.audio_encoder(accumulated_audio_inputs[j])
+                gradient_text_embeddings = self.model.text_encoder(**accumulated_text_inputs[j])
+                gradient_audio_embeddings = self.model.audio_encoder(**accumulated_audio_inputs[j])
 
                 output = self.model.loss(torch.concatenate(
                     accumulated_audio_embeddings[:j] + [gradient_audio_embeddings] + accumulated_audio_embeddings[
