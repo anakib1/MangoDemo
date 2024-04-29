@@ -89,7 +89,11 @@ class ClapTrainer(MangoTrainer):
                     train_outputs[k] = []
                 train_outputs[k].append(self.accelerator.gather_for_metrics(v))
             loss = output['loss']
-            losses.extend(self.accelerator.gather_for_metrics(loss).cpu().numpy())
+            loss = self.accelerator.gather_for_metrics(loss).cpu().numpy()
+            try:
+                losses.extend(loss)
+            except Exception:
+                losses.append(loss)
 
             accumulated_text_inputs = []
             accumulated_audio_inputs = []
@@ -137,7 +141,11 @@ class ClapTrainer(MangoTrainer):
                     if k not in model_outputs:
                         model_outputs[k] = []
                     model_outputs[k].append(self.accelerator.gather_for_metrics(v))
-                losses.append(self.accelerator.gather_for_metrics(loss).cpu().numpy())
+                loss = self.accelerator.gather_for_metrics(loss).cpu().numpy()
+                try:
+                    losses.extend(loss)
+                except Exception:
+                    losses.append(loss)
 
                 if self.accelerator.is_main_process:
                     self.eval_bar.update(1)
