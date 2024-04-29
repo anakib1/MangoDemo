@@ -33,16 +33,16 @@ class EvalOutput(TrainingOutput):
 @dataclass
 class TrainerConfig:
     model_name: str = None
+    mixed_precision: Union[None, Literal['fp16']] = None
+    early_stopping_patience: int = None
     concatenate_batches: bool = True
     logs_frequency_batches: int = 1
     save_strategy: str = 'end'
     push_to_hub: bool = True
-    mixed_precision: Union[None, Literal['fp16']] = None
     grad_clip: bool = False
     lr: float = 1e-3
     weight_decay: float = 1e-3
     scheduler_strategy: str = 'batch'
-    early_stopping_patience: int = None
     hf_user: str = 'anakib1'
     gradient_accumulation_steps: int = 1
 
