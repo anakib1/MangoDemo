@@ -56,10 +56,10 @@ class ClapTrainer(MangoTrainer):
         for i, batch in enumerate(self.train_loader):
 
             texts = batch['text_model_input']
-            texts = {k : v.clone() for k, v in texts.items()}
+            texts = {k: v.clone() for k, v in texts.items()}
 
             audios = batch['audio_model_input']
-            audios = {k : v.clone() for k, v in audios.items()}
+            audios = {k: v.clone() for k, v in audios.items()}
 
             with torch.no_grad():
                 accumulated_text_inputs.append(texts)
@@ -86,8 +86,8 @@ class ClapTrainer(MangoTrainer):
                 gradient_text_embeddings = embed1['text_embeddings']
                 gradient_audio_embeddings = embed1['audio_embeddings']
 
-                input_audio = torch.concatenate(accumulated_audio_embeddings[:j] + [gradient_audio_embeddings] + accumulated_audio_embeddings[j + 1:], dim=0)
-                input_text = torch.concatenate(accumulated_text_embeddings[:j] + [gradient_text_embeddings] + accumulated_text_embeddings[j + 1:], dim=0)
+                input_audio = torch.concatenate(accumulated_audio_embeddings[:j] + [gradient_audio_em   beddings] + accumulated_audio_embeddings[j + 1:], dim=0).clone()
+                input_text = torch.concatenate(accumulated_text_embeddings[:j] + [gradient_text_embeddings] + accumulated_text_embeddings[j + 1:], dim=0).clone()
 
                 self.accelerator.wait_for_everyone()
                 output = self.model(input_audio, input_text, calculate_loss=True)
