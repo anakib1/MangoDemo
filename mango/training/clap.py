@@ -72,17 +72,16 @@ class ClapTrainer(MangoTrainer):
                 gradient_text_embeddings = embed['text_embeddings']
                 gradient_audio_embeddings = embed['audio_embeddings']
 
-                output = self.model(torch.concatenate(
-                    accumulated_audio_embeddings[:j] + [gradient_audio_embeddings] + accumulated_audio_embeddings[
-                                                                                     j + 1:], dim=0),
-                    torch.concatenate(accumulated_text_embeddings[:j] + [
-                        gradient_text_embeddings] + accumulated_text_embeddings[j + 1:], dim=0),
-                    calculate_loss=True)
+                input_audio = torch.concatenate(accumulated_audio_embeddings[:j] + [gradient_audio_embeddings] + accumulated_audio_embeddings[j + 1:], dim=0)
+                input_text = torch.concatenate(accumulated_text_embeddings[:j] + [gradient_text_embeddings] + accumulated_text_embeddings[j + 1:], dim=0)
+                output = self.model(input_audio, input_text, calculate_loss=True)
 
                 if 'loss' not in output:
                     raise Exception("Model 'forward' function did not return 'loss' as expected. ")
                 loss = output['loss']
                 del embed
+                del input_audio
+                del input_text
 
                 self.accelerator.backward(loss)
                 if self.config.grad_clip:
