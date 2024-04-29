@@ -61,6 +61,7 @@ class ClapTrainer(MangoTrainer):
                 embed = self.model(batch['audio_model_input'], batch['text_model_input'])
                 accumulated_text_embeddings.append(embed['audio_embeddings'])
                 accumulated_audio_embeddings.append(embed['text_embeddings'])
+                del embed
 
             if (i + 1) % self.config.num_repeats > 0:
                 continue
