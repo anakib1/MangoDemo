@@ -1,7 +1,7 @@
 import torch
 
 from .MangoTrainer import MangoTrainer, TrainingOutput, TrainerConfig, EvalOutput
-from typing import Dict
+from typing import Dict, Union
 
 from dataclasses import dataclass
 import logging
@@ -21,14 +21,19 @@ class MultiGpuClap(torch.nn.Module):
         self.text_encoder = text_encoder
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def loss(self, audio_embeddings: torch.Tensor, text_embeddings: torch.Tensor) -> Dict:
-        logits = text_embeddings @ torch.transpose(audio_embeddings, 0, 1)
-        N = logits.shape[0]
-        ans = {"logits": logits}
-        target = torch.arange(0, N, dtype=torch.long).to(logits.device)
-        loss = self.loss_fn(logits, target) + self.loss_fn(torch.transpose(logits, 0, 1), target)
-        ans["loss"] = loss
-        return ans
+    def forward(self, audio: Union[torch.Tensor, Dict], text: Union[torch.Tensor, Dict],
+                calculate_loss: bool = False) -> Dict:
+        if calculate_loss:
+            logits = text @ torch.transpose(audio, 0, 1)
+            N = logits.shape[0]
+            ans = {"logits": logits}
+            target = torch.arange(0, N, dtype=torch.long).to(logits.device)
+            loss = self.loss_fn(logits, target) + self.loss_fn(torch.transpose(logits, 0, 1), target)
+            ans["loss"] = loss
+            return ans
+        else:
+            return {'audio_embeddings': self.audio_encoder(**audio),
+                    'text_embeddings': self.text_encoder(**text)}
 
 
 class ClapTrainer(MangoTrainer):
@@ -53,8 +58,9 @@ class ClapTrainer(MangoTrainer):
             with torch.no_grad():
                 accumulated_text_inputs.append(batch['text_model_input'])
                 accumulated_audio_inputs.append(batch['audio_model_input'])
-                accumulated_text_embeddings.append(self.model.audio_encoder(**batch['audio_model_input']))
-                accumulated_audio_embeddings.append(self.model.text_encoder(**batch['text_model_input']))
+                embed = self.model(batch['audio_model_input'], batch['text_model_input'])
+                accumulated_text_embeddings.append(embed['audio_embeddings'])
+                accumulated_audio_embeddings.append(embed['text_embeddings'])
 
             if (i + 1) % self.config.num_repeats > 0:
                 continue
@@ -81,8 +87,9 @@ class ClapTrainer(MangoTrainer):
             self.optimizer.step()
 
             with torch.no_grad():
-                output = self.model.loss(torch.concatenate(accumulated_audio_embeddings, dim=0),
-                                         torch.concatenate(accumulated_text_embeddings, dim=0))
+                output = self.model(torch.concatenate(accumulated_audio_embeddings, dim=0),
+                                    torch.concatenate(accumulated_text_embeddings, dim=0),
+                                    calculate_loss=True)
 
             for k, v in output.items():
                 if k not in train_outputs:
@@ -125,14 +132,16 @@ class ClapTrainer(MangoTrainer):
 
         with torch.no_grad():
             for i, batch in enumerate(self.eval_loader):
-                accumulated_text_embeddings.append(self.model.audio_encoder(**batch['audio_model_input']))
-                accumulated_audio_embeddings.append(self.model.text_encoder(**batch['text_model_input']))
+                embed = self.model(batch['audio_model_input'], batch['text_model_input'])
+                accumulated_text_embeddings.append(embed['audio_embeddings'])
+                accumulated_audio_embeddings.append(embed['text_embeddings'])
 
                 if (i + 1) % self.config.num_repeats > 0:
                     continue
 
                 output = self.model.loss(torch.concatenate(accumulated_audio_embeddings, dim=0),
-                                         torch.concatenate(accumulated_text_embeddings, dim=0))
+                                         torch.concatenate(accumulated_text_embeddings, dim=0),
+                                         calculate_loss=True)
                 if 'loss' not in output:
                     raise Exception("Model 'forward' function did not return 'loss' as expected. ")
                 loss = output['loss']
