@@ -92,7 +92,10 @@ class ClapTrainer(MangoTrainer):
                 del gradient_text_embeddings
                 del gradient_audio_embeddings
                 del output
+
+                self.accelerator.wait_for_everyone()
                 self.accelerator.backward(loss)
+                self.accelerator.wait_for_everyone()
                 break
 
             if self.config.grad_clip:
